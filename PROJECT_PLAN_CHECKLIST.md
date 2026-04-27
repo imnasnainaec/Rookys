@@ -17,7 +17,7 @@ Gate G0 status: Pending review
 - [x] Create AGENTS.md in repo root as the first artifact.
 - [x] Define strict phase-lock rule: no autonomous phase advancement.
 - [x] Define required deliverable format per phase.
-- [~] Initialize local git repo, create main branch, and connect to GitHub remote.
+- [x] Initialize local git repo, create main branch, and connect to GitHub remote.
 - [x] Create initial bootstrap commit including AGENTS.md and planning docs.
 - [x] Define commit protocol: commit-per-checklist-item traceability.
 - [x] Establish canonical in-repo checklist file and update rule.
@@ -31,10 +31,9 @@ Gate G0 status: Pending review
 
 - 2026-04-27: Added governance and legal artifacts (AGENTS.md, LICENSE, THIRD_PARTY_LICENSES.md, PROJECT_PLAN_CHECKLIST.md).
 - 2026-04-27: Initialized git repository on main and created bootstrap commit 0a2793e.
-- 2026-04-27: GitHub remote connection still pending user-provided remote URL.
+- 2026-04-27: Connected remote origin to https://github.com/imnasnainaec/Rookys.git and pushed main.
 
 ## Next Action (Blocked Until Current Item Completes)
 
-1. Add GitHub remote URL and push main.
-2. Mark "Initialize local git repo, create main branch, and connect to GitHub remote" as completed.
-3. Request G0 review decision from user.
+1. Request G0 review decision from user.
+2. If G0 is approved, wait for explicit instruction before starting Phase 1.
