@@ -36,19 +36,18 @@ Gate G0 status: Approved
 
 ## Next Action
 
-1. Review Phase 1 deliverables and test evidence.
-2. Record gate G1 outcome (`Approved`, `Approved with follow-ups`, or `Rejected`).
-3. Only after recorded G1 outcome and explicit instruction, proceed to Phase 2.
+1. Wait for explicit instruction before starting Phase 2.
+2. On approval to proceed, begin Phase 2 core engine state schema work.
 
 ## Phase 1 - Project scaffold and quality rails (depends on Phase 0)
 
-Gate G1 status: Pending
+Gate G1 status: Approved
 
 - [x] Initialize React + TypeScript (Vite), Redux Toolkit, PeerJS, TensorFlow.js, nanoid, and test stack.
 - [x] Establish module boundaries for variant future-proofing (core rules engine, variant config, networking, UI, AI inference/training artifacts).
 - [x] Define CI baseline: typecheck, lint, unit tests, build, and Pages artifact generation.
 - [x] Configure GitHub Pages deployment path and environment config for public hosting.
-- [~] Review gate G1: CI green, app boots in browser, deployment dry-run succeeds.
+- [x] Review gate G1: CI green, app boots in browser, deployment dry-run succeeds.
 
 ## Phase 1 Execution Log
 
@@ -58,6 +57,7 @@ Gate G1 status: Pending
 - 2026-04-27: Installed dependencies and validated `typecheck`, `lint`, `test:run`, and `build` successfully.
 - 2026-04-27: Added baseline unit test `src/modules/core/index.test.ts` to make test rail executable in CI.
 - 2026-04-27: Updated lint ignore rules for generated `coverage` output and kept lint clean without deleting artifacts.
+- 2026-04-27: User recorded G1 review outcome as Approved.
 
 ## Phase 2 - Core game engine (classic mode) with variant-ready data model (depends on Phase 1)
 
