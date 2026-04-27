@@ -12,7 +12,7 @@ Canonical source of truth for implementation progress and session resume.
 
 ## Phase 0 - Governance, repository bootstrap, and legal foundation
 
-Gate G0 status: Pending review
+Gate G0 status: Approved
 
 - [x] Create AGENTS.md in repo root as the first artifact.
 - [x] Define strict phase-lock rule: no autonomous phase advancement.
@@ -25,15 +25,15 @@ Gate G0 status: Pending review
 - [x] Add proprietary LICENSE with third-party clarification.
 - [x] Add THIRD_PARTY_LICENSES.md attribution workflow template.
 - [x] Record Phase 0 commit hash(es) and update statuses.
-- [ ] Review gate G0 approved.
+- [x] Review gate G0 approved.
 
 ## Phase 0 Execution Log
 
 - 2026-04-27: Added governance and legal artifacts (AGENTS.md, LICENSE, THIRD_PARTY_LICENSES.md, PROJECT_PLAN_CHECKLIST.md).
 - 2026-04-27: Initialized git repository on main and created bootstrap commit 0a2793e.
 - 2026-04-27: Connected remote origin to https://github.com/imnasnainaec/Rookys.git and pushed main.
+- 2026-04-27: User recorded G0 review outcome as Approved.
 
-## Next Action (Blocked Until Current Item Completes)
+## Next Action
 
-1. Request G0 review decision from user.
-2. If G0 is approved, wait for explicit instruction before starting Phase 1.
+1. Wait for explicit user instruction before starting Phase 1.
