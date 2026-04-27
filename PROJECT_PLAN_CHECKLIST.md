@@ -36,17 +36,26 @@ Gate G0 status: Approved
 
 ## Next Action
 
-1. Wait for explicit user instruction before starting Phase 1.
+1. Run `npm install` to sync dependency graph with updated package.json.
+2. Run `npm run typecheck`, `npm run lint`, `npm run test:run`, and `npm run build`.
+3. If all checks pass, mark remaining Phase 1 items complete and request G1 review.
 
 ## Phase 1 - Project scaffold and quality rails (depends on Phase 0)
 
 Gate G1 status: Pending
 
-- [ ] Initialize React + TypeScript (Vite), Redux Toolkit, PeerJS, TensorFlow.js, nanoid, and test stack.
-- [ ] Establish module boundaries for variant future-proofing (core rules engine, variant config, networking, UI, AI inference/training artifacts).
-- [ ] Define CI baseline: typecheck, lint, unit tests, build, and Pages artifact generation.
-- [ ] Configure GitHub Pages deployment path and environment config for public hosting.
+- [~] Initialize React + TypeScript (Vite), Redux Toolkit, PeerJS, TensorFlow.js, nanoid, and test stack.
+- [x] Establish module boundaries for variant future-proofing (core rules engine, variant config, networking, UI, AI inference/training artifacts).
+- [~] Define CI baseline: typecheck, lint, unit tests, build, and Pages artifact generation.
+- [~] Configure GitHub Pages deployment path and environment config for public hosting.
 - [ ] Review gate G1: CI green, app boots in browser, deployment dry-run succeeds.
+
+## Phase 1 Execution Log
+
+- 2026-04-27: Vite React+TS scaffold created and app boots via `npm run dev`.
+- 2026-04-27: Added module boundary scaffolding under `src/modules` and Redux store bootstrap.
+- 2026-04-27: Added CI and GitHub Pages workflows plus `BASE_PATH` support.
+- 2026-04-27: Pending local dependency install and full quality command validation (`typecheck`, `lint`, `test:run`, `build`).
 
 ## Phase 2 - Core game engine (classic mode) with variant-ready data model (depends on Phase 1)
 
