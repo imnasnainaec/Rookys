@@ -37,3 +37,87 @@ Gate G0 status: Approved
 ## Next Action
 
 1. Wait for explicit user instruction before starting Phase 1.
+
+## Phase 1 - Project scaffold and quality rails (depends on Phase 0)
+
+Gate G1 status: Pending
+
+- [ ] Initialize React + TypeScript (Vite), Redux Toolkit, PeerJS, TensorFlow.js, nanoid, and test stack.
+- [ ] Establish module boundaries for variant future-proofing (core rules engine, variant config, networking, UI, AI inference/training artifacts).
+- [ ] Define CI baseline: typecheck, lint, unit tests, build, and Pages artifact generation.
+- [ ] Configure GitHub Pages deployment path and environment config for public hosting.
+- [ ] Review gate G1: CI green, app boots in browser, deployment dry-run succeeds.
+
+## Phase 2 - Core game engine (classic mode) with variant-ready data model (depends on Phase 1)
+
+Gate G2 status: Pending
+
+- [ ] Formalize immutable state schema for board, pieces, upgrades, turn metadata, repetition-hash cache, and extensible variant parameters.
+- [ ] Implement legal move generation and validation for king and rooky rules (no jump, friendly collision restrictions, captures, king safety).
+- [ ] Implement upgrade action semantics and history reset behavior required by repetition rules.
+- [ ] Implement terminal detection: check, checkmate, stalemate condition 1, stalemate condition 2.
+- [ ] Add deterministic state+move hashing strategy and collision-resistant format.
+- [ ] Write comprehensive engine tests from rules text (positive and negative cases).
+- [ ] Review gate G2: engine passes all rule tests and independent review confirms rules parity.
+
+## Phase 3 - Local gameplay UI (depends on Phase 2)
+
+Gate G3 status: Pending
+
+- [ ] Build turn UX flow: select piece -> choose move/upgrade -> select target/direction.
+- [ ] Add legal-move highlighting, check/checkmate/stalemate state messaging, undo-disabled constraints matching final rules.
+- [ ] Add responsive layout and keyboard-accessible controls for essential actions.
+- [ ] Add game log panel for move/upgrade history and rule outcomes.
+- [ ] Review gate G3: complete local match can be played end-to-end with no logic/UI desync.
+
+## Phase 4 - P2P multiplayer completion before variants (depends on Phase 3)
+
+Gate G4 status: Pending
+
+- [ ] Implement host/join handshake using share code URL flow.
+- [ ] Synchronize actions (not full state snapshots by default) with deterministic reducer replay.
+- [ ] Add resilience paths: reconnect timeout handling, peer disconnect messaging, duplicate/out-of-order action protection.
+- [ ] Add host-authoritative fallback for dispute resolution if action streams diverge.
+- [ ] Create multiplayer test checklist: fresh game sync, capture sync, checkmate sync, upgrade+history-clear sync, repeated-state draw sync.
+- [ ] Review gate G4: functioning P2P game accepted as release candidate baseline before any variant implementation starts.
+
+## Phase 5 - Deployment hardening (depends on Phase 4)
+
+Gate G5 status: Pending
+
+- [ ] Publish to GitHub Pages public repo with production build and verified base path.
+- [ ] Add release workflow: tagged build, artifact retention, and rollback instructions.
+- [ ] Add telemetry-lite diagnostics (non-personal) for connection failures and model load failures.
+- [ ] Review gate G5: external users can create/join games successfully from hosted URL.
+
+## Phase 6 - AI architecture and training pipeline with ranking system (depends on Phase 5)
+
+Gate G6 status: Pending
+
+- [ ] Define variant-conditioned observation encoding from day 1 so inference accepts classic and future variant descriptors.
+- [ ] Keep first shipped AI scope classic-only play quality, but enforce model API compatibility with variants to avoid refactors.
+- [ ] Build training pipeline (Python/Keras) to export tfjs models with semantic versioning and metadata manifest.
+- [ ] Implement hybrid difficulty system: fixed checkpoints (easy/normal/hard/expert) + runtime knobs (search depth/noise/time budget).
+- [ ] Implement evaluation ladder: round-robin and Elo/Glicko rating updates across checkpoints and heuristic baselines.
+- [ ] Add skill calibration targets (expected win-rate bands) for each difficulty label.
+- [ ] Persist leaderboard metadata and expose opponent tiers in UI.
+- [ ] Review gate G6: ranked AI tiers are reproducible, documented, and selectable in product.
+
+## Phase 7 - Variant implementation (strictly after G4 and ideally after G6) (depends on Phase 6)
+
+Gate G7 status: Pending
+
+- [ ] Implement variant config schema and validation for board size, piece sets, king behavior, wrap-around, shrink modes, reincarnation.
+- [ ] Expand engine tests via matrix strategy (core invariants + per-variant rules).
+- [ ] Ensure AI inference runs on variants through conditioned inputs, with fallback policy when confidence is low.
+- [ ] Add variant compatibility labels per AI tier (native-trained, transfer-capable, fallback-assisted).
+- [ ] Review gate G7: each enabled variant passes rules tests, multiplayer sync tests, and AI compatibility checks.
+
+## Phase 8 - Final QA and launch operations (depends on Phase 7)
+
+Gate G8 status: Pending
+
+- [ ] Run full regression suite: local, P2P, AI tiers, and selected variants.
+- [ ] Verify legal docs and third-party attribution are current for release.
+- [ ] Publish launch checklist and post-launch issue triage workflow.
+- [ ] Review gate G8: launch approval with known-issues log.
