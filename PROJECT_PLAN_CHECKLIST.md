@@ -78,6 +78,8 @@ Gate G2 status: Pending
 - 2026-04-28: Removed unused starter assets from `src/assets` as repository cleanup.
 - 2026-04-28: Expanded `src/modules/core/index.test.ts` with additional positive/negative legality, repetition, terminal-state, hashing, and variant-parameter coverage (15 total tests).
 - 2026-04-28: Verified Phase 2 quality rails green via `npm run typecheck`, `npm run lint`, `npm run test:run`, and `npm run build`; pending user gate decision for G2.
+- 2026-04-28: Added `src/App.test.tsx`, `src/main.test.tsx`, `src/modules/boundaries.test.ts`, and `src/store/index.test.ts` to reach 100% statement/branch/function/line coverage across all source files (26 tests total).
+- 2026-04-28: Applied same-square guard fix to `getDirectionBetween` in `src/modules/core/index.ts` to correctly return `null` for same-square inputs; all quality rails re-verified green.
 
 ## Phase 3 - Local gameplay UI (depends on Phase 2)
 
