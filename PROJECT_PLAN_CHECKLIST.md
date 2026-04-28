@@ -90,6 +90,7 @@ Gate G3 status: Pending
 - [ ] Add legal-move highlighting, check/checkmate/stalemate state messaging, undo-disabled constraints matching final rules.
 - [ ] Add responsive layout and keyboard-accessible controls for essential actions.
 - [ ] Add game log panel for move/upgrade history and rule outcomes.
+- [ ] Add UI options panel for: choosing colors (black vs white, yellow vs red, red vs blue, yellow vs blue); choosing file/column labels (a,b,c,d,... vs q,w,e,r,... vs a,s,d,f,... vs z,x,c,v,...); turning on-off reachable-square highlighting (e.g., all squares reachable by a yellow piece are light yellow, reachable by a red piece are light red, and reachable by both are light orange);
 - [ ] Review gate G3: complete local match can be played end-to-end with no logic/UI desync.
 
 ## Phase 4 - P2P multiplayer completion before variants (depends on Phase 3)

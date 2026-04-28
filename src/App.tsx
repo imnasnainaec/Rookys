@@ -1,5 +1,5 @@
 import './App.css'
-import { architectureModules } from './modules'
+import { architectureModules } from './modules/index'
 
 function App() {
   return (
