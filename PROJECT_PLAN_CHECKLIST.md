@@ -1,6 +1,6 @@
 # PROJECT_PLAN_CHECKLIST
 
-Last updated: 2026-04-27
+Last updated: 2026-04-28
 Canonical source of truth for implementation progress and session resume.
 
 ## Legend
@@ -86,9 +86,11 @@ Gate G3 status: Pending
 Gate G4 status: Pending
 
 - [ ] Implement host/join handshake using share code URL flow.
+- [ ] Standardize join URL query flow using `?join=<ID>` for host share links and joiner auto-connect.
 - [ ] Synchronize actions (not full state snapshots by default) with deterministic reducer replay.
 - [ ] Add resilience paths: reconnect timeout handling, peer disconnect messaging, duplicate/out-of-order action protection.
 - [ ] Add host-authoritative fallback for dispute resolution if action streams diverge.
+- [ ] Consider idea: use default/free public PeerJS broker configuration in baseline deployment.
 - [ ] Create multiplayer test checklist: fresh game sync, capture sync, checkmate sync, upgrade+history-clear sync, repeated-state draw sync.
 - [ ] Review gate G4: functioning P2P game accepted as release candidate baseline before any variant implementation starts.
 
@@ -108,6 +110,8 @@ Gate G6 status: Pending
 - [ ] Define variant-conditioned observation encoding from day 1 so inference accepts classic and future variant descriptors.
 - [ ] Keep first shipped AI scope classic-only play quality, but enforce model API compatibility with variants to avoid refactors.
 - [ ] Build training pipeline (Python/Keras) to export tfjs models with semantic versioning and metadata manifest.
+- [ ] Consider idea: standardize browser model loading path for tfjs `model.json` from public assets.
+- [ ] Consider idea: run browser inference in a Web Worker to avoid UI thread blocking.
 - [ ] Implement hybrid difficulty system: fixed checkpoints (easy/normal/hard/expert) + runtime knobs (search depth/noise/time budget).
 - [ ] Implement evaluation ladder: round-robin and Elo/Glicko rating updates across checkpoints and heuristic baselines.
 - [ ] Add skill calibration targets (expected win-rate bands) for each difficulty label.
@@ -119,6 +123,9 @@ Gate G6 status: Pending
 Gate G7 status: Pending
 
 - [ ] Implement variant config schema and validation for board size, piece sets, king behavior, wrap-around, shrink modes, reincarnation.
+- [ ] Define shrinking-board timing rule: evaluate shrink effects at start of turn.
+- [ ] Add variant UI mode toggle to switch variant pane between simple presets and advanced customization.
+- [ ] Add explicit variant piece support milestone for Bishy.
 - [ ] Expand engine tests via matrix strategy (core invariants + per-variant rules).
 - [ ] Ensure AI inference runs on variants through conditioned inputs, with fallback policy when confidence is low.
 - [ ] Add variant compatibility labels per AI tier (native-trained, transfer-capable, fallback-assisted).
