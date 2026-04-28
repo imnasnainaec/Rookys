@@ -708,6 +708,10 @@ function getPieceIdAtSquare(
 }
 
 function getDirectionBetween(from: Square, to: Square): Direction | null {
+  if (areSquaresEqual(from, to)) {
+    return null;
+  }
+
   if (from.file === to.file) {
     return to.rank > from.rank ? "north" : "south";
   }

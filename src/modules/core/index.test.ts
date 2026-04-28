@@ -12,6 +12,7 @@ import {
   getActionHash,
   getPieceAtSquare,
   getStateHash,
+  isKingInCheck,
   type DirectionalRanges,
   type GameState,
   type KingState,
@@ -176,6 +177,15 @@ describe("core engine", () => {
       evaluation.legalActions.some((action) => action.type === "upgrade"),
     ).toBeFalsy();
     expect(evaluation.legalActions).toHaveLength(4);
+  });
+
+  it("returns false for check detection when the requested king is missing", () => {
+    const stateWithoutWhiteKing = createState([
+      king("black-king", "black", 4, 4),
+      rooky("black-rooky-a", "black", 4, 3, { south: 3 }),
+    ]);
+
+    expect(isKingInCheck(stateWithoutWhiteKing, "white")).toBe(false);
   });
 
   it("applies upgrades and clears repetition tracking", () => {
@@ -413,6 +423,58 @@ describe("core engine", () => {
     expect(getActionHash(stateWithoutCapture, moveAction)).not.toBe(
       getActionHash(stateWithCapture, moveAction),
     );
+  });
+
+  it("guards action hashing against unknown pieces and invalid upgrades", () => {
+    const state = createState([
+      king("white-king", "white", 2, 0),
+      rooky("white-rooky-a", "white", 0, 0),
+      king("black-king", "black", 2, 4),
+    ]);
+
+    expect(() =>
+      getActionHash(state, {
+        type: "move",
+        pieceId: "missing-piece",
+        to: { file: 0, rank: 1 },
+      }),
+    ).toThrow("Unknown piece missing-piece.");
+
+    expect(() =>
+      getActionHash(state, {
+        type: "upgrade",
+        pieceId: "white-king",
+        direction: "north",
+      }),
+    ).toThrow("Only rookys can be upgraded.");
+  });
+
+  it("stops rooky ray generation at board edges", () => {
+    const state = createState([
+      king("white-king", "white", 2, 0),
+      rooky("white-rooky-edge", "white", 4, 0, { east: 4 }),
+      king("black-king", "black", 2, 4),
+    ]);
+
+    const edgeRookyMoves = generateLegalActions(state).filter(
+      (action) =>
+        action.type === "move" && action.pieceId === "white-rooky-edge",
+    );
+
+    expect(edgeRookyMoves).toHaveLength(0);
+  });
+
+  it("handles overlapping rooky/king squares without directional attacks", () => {
+    const state = createState(
+      [
+        king("white-king", "white", 2, 2),
+        king("black-king", "black", 4, 4),
+        rooky("black-rooky-overlap", "black", 2, 2, { north: 4, south: 4 }),
+      ],
+      { activePlayer: "white" },
+    );
+
+    expect(evaluateTurn(state).inCheck).toBe(false);
   });
 
   it("respects variant parameters that disable upgrades", () => {
