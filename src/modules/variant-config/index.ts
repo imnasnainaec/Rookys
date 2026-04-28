@@ -6,6 +6,6 @@ export interface VariantDescriptor {
 
 export const classicVariant: VariantDescriptor = {
   id: "classic",
-  boardSize: 8,
+  boardSize: 5,
   label: "Classic",
 };
