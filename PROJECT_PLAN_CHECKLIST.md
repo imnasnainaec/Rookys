@@ -63,13 +63,19 @@ Gate G1 status: Approved
 
 Gate G2 status: Pending
 
-- [ ] Formalize immutable state schema for board, pieces, upgrades, turn metadata, repetition-hash cache, and extensible variant parameters.
-- [ ] Implement legal move generation and validation for king and rooky rules (no jump, friendly collision restrictions, captures, king safety).
-- [ ] Implement upgrade action semantics and history reset behavior required by repetition rules.
-- [ ] Implement terminal detection: check, checkmate, stalemate condition 1, stalemate condition 2.
-- [ ] Add deterministic state+move hashing strategy and collision-resistant format.
+- [x] Formalize immutable state schema for board, pieces, upgrades, turn metadata, repetition-hash cache, and extensible variant parameters.
+- [x] Implement legal move generation and validation for king and rooky rules (no jump, friendly collision restrictions, captures, king safety).
+- [x] Implement upgrade action semantics and history reset behavior required by repetition rules.
+- [x] Implement terminal detection: check, checkmate, stalemate condition 1, stalemate condition 2.
+- [x] Add deterministic state+move hashing strategy and collision-resistant format.
 - [ ] Write comprehensive engine tests from rules text (positive and negative cases).
 - [ ] Review gate G2: engine passes all rule tests and independent review confirms rules parity.
+
+## Phase 2 Execution Log
+
+- 2026-04-28: Implemented classic core engine state/action model and rule validations in `src/modules/core/index.ts`.
+- 2026-04-28: Added rule-focused engine tests and over-upgrade guard coverage in `src/modules/core/index.test.ts`.
+- 2026-04-28: Removed unused starter assets from `src/assets` as repository cleanup.
 
 ## Phase 3 - Local gameplay UI (depends on Phase 2)
 

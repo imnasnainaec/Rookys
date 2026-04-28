@@ -259,7 +259,7 @@ export function applyAction(state: GameState, action: TurnAction): GameState {
   const nextPieces =
     legalAction.type === "move"
       ? applyMoveToPieces(state.pieces, legalAction)
-      : applyUpgradeToPieces(state.pieces, legalAction);
+      : applyUpgradeToPieces(state.variant.board, state.pieces, legalAction);
 
   const nextRepetition =
     legalAction.type === "move"
@@ -470,10 +470,15 @@ function generateLegalUpgradeActions(
     )
     .filter(
       (candidate) =>
+        canApplyUpgrade(state.variant.board, piece, candidate.direction) &&
         !isKingInCheck(
           {
             ...state,
-            pieces: applyUpgradeToPieces(state.pieces, candidate),
+            pieces: applyUpgradeToPieces(
+              state.variant.board,
+              state.pieces,
+              candidate,
+            ),
           },
           piece.owner,
         ),
@@ -634,6 +639,7 @@ function applyMoveToPieces(
 }
 
 function applyUpgradeToPieces(
+  board: BoardState,
   pieces: readonly PieceState[],
   action: UpgradeAction,
 ): readonly PieceState[] {
@@ -644,6 +650,10 @@ function applyUpgradeToPieces(
 
     if (piece.kind !== "rooky") {
       throw new Error("Only rookys can be upgraded.");
+    }
+
+    if (!canApplyUpgrade(board, piece, action.direction)) {
+      throw new Error("Upgrade exceeds directional range limit for the board.");
     }
 
     return {
@@ -771,4 +781,20 @@ function getOpponent(player: PlayerColor): PlayerColor {
 
 function sortPieces(pieces: readonly PieceState[]): readonly PieceState[] {
   return [...pieces].sort((left, right) => left.id.localeCompare(right.id));
+}
+
+function canApplyUpgrade(
+  board: BoardState,
+  piece: RookyState,
+  direction: Direction,
+): boolean {
+  return piece.ranges[direction] < getDirectionRangeCap(board, direction);
+}
+
+function getDirectionRangeCap(board: BoardState, direction: Direction): number {
+  if (direction === "east" || direction === "west") {
+    return Math.max(0, board.width - 1);
+  }
+
+  return Math.max(0, board.height - 1);
 }

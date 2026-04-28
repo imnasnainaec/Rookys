@@ -206,6 +206,42 @@ describe("core engine", () => {
     expect(nextState.turn.activePlayer).toBe("black");
   });
 
+  it("blocks over-upgrading beyond board directional limits", () => {
+    const state = createState([
+      king("white-king", "white", 4, 0),
+      rooky("white-rooky-a", "white", 0, 0, {
+        north: 4,
+        east: 4,
+      }),
+      king("black-king", "black", 4, 4),
+    ]);
+
+    const legalActions = generateLegalActions(state);
+    const northUpgrade = legalActions.find(
+      (action) =>
+        action.type === "upgrade" &&
+        action.pieceId === "white-rooky-a" &&
+        action.direction === "north",
+    );
+    const eastUpgrade = legalActions.find(
+      (action) =>
+        action.type === "upgrade" &&
+        action.pieceId === "white-rooky-a" &&
+        action.direction === "east",
+    );
+
+    expect(northUpgrade).toBeUndefined();
+    expect(eastUpgrade).toBeUndefined();
+
+    expect(() =>
+      applyAction(state, {
+        type: "upgrade",
+        pieceId: "white-rooky-a",
+        direction: "north",
+      }),
+    ).toThrow("Illegal action.");
+  });
+
   it("detects checkmate and stalemate evaluation states", () => {
     const checkmateState = createState(
       [
