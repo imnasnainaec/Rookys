@@ -61,7 +61,7 @@ Gate G1 status: Approved
 
 ## Phase 2 - Core game engine (classic mode) with variant-ready data model (depends on Phase 1)
 
-Gate G2 status: Pending
+Gate G2 status: Approved
 
 - [x] Formalize immutable state schema for board, pieces, upgrades, turn metadata, repetition-hash cache, and extensible variant parameters.
 - [x] Implement legal move generation and validation for king and rooky rules (no jump, friendly collision restrictions, captures, king safety).
@@ -69,7 +69,7 @@ Gate G2 status: Pending
 - [x] Implement terminal detection: check, checkmate, stalemate condition 1, stalemate condition 2.
 - [x] Add deterministic state+move hashing strategy and collision-resistant format.
 - [x] Write comprehensive engine tests from rules text (positive and negative cases).
-- [ ] Review gate G2: engine passes all rule tests and independent review confirms rules parity.
+- [x] Review gate G2: engine passes all rule tests and independent review confirms rules parity.
 
 ## Phase 2 Execution Log
 
@@ -80,6 +80,7 @@ Gate G2 status: Pending
 - 2026-04-28: Verified Phase 2 quality rails green via `npm run typecheck`, `npm run lint`, `npm run test:run`, and `npm run build`; pending user gate decision for G2.
 - 2026-04-28: Added `src/App.test.tsx`, `src/main.test.tsx`, `src/modules/boundaries.test.ts`, and `src/store/index.test.ts` to reach 100% statement/branch/function/line coverage across all source files (26 tests total).
 - 2026-04-28: Applied same-square guard fix to `getDirectionBetween` in `src/modules/core/index.ts` to correctly return `null` for same-square inputs; all quality rails re-verified green.
+- 2026-04-28: User recorded G2 review outcome as Approved.
 
 ## Phase 3 - Local gameplay UI (depends on Phase 2)
 
