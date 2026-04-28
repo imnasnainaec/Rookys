@@ -126,6 +126,7 @@ Gate G7 status: Pending
 - [ ] Define shrinking-board timing rule: evaluate shrink effects at start of turn.
 - [ ] Add variant UI mode toggle to switch variant pane between simple presets and advanced customization.
 - [ ] Add explicit variant piece support milestone for Bishy.
+- [ ] Add explicit variant piece support milestone for Queeny.
 - [ ] Expand engine tests via matrix strategy (core invariants + per-variant rules).
 - [ ] Ensure AI inference runs on variants through conditioned inputs, with fallback policy when confidence is low.
 - [ ] Add variant compatibility labels per AI tier (native-trained, transfer-capable, fallback-assisted).

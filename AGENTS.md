@@ -39,7 +39,7 @@ Stop immediately and request user clarification when any of the following occur:
 
 - Ambiguous or conflicting requirement.
 - Failing core tests that block phase acceptance.
-- Mismatch between implementation behavior and `Rookys-rules.txt`.
+- Mismatch between implementation behavior and `ROOKYS_RULES.md`.
 
 ## 6) Review Gates
 
