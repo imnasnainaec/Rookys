@@ -1,13 +1,17 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  __coreTestOnly,
   applyAction,
+  classicVariantParameters,
   coreBoundary,
   createClassicGameState,
   createGameState,
   evaluateTurn,
   generateLegalActions,
+  getActionHash,
   getPieceAtSquare,
+  getStateHash,
   type DirectionalRanges,
   type GameState,
   type KingState,
@@ -301,5 +305,197 @@ describe("core engine", () => {
       kind: "stalemate",
       reason: "repetition",
     });
+  });
+
+  it("does not trigger repetition stalemate unless both recent plies are repeated move actions", () => {
+    const state = createState(
+      [king("white-king", "white", 0, 0), king("black-king", "black", 4, 4)],
+      {
+        activePlayer: "white",
+        recentPlies: [
+          {
+            player: "white",
+            actionType: "move",
+            stateMoveHash: "white-repeat",
+            wasRepeat: true,
+          },
+          {
+            player: "black",
+            actionType: "move",
+            stateMoveHash: "black-new",
+            wasRepeat: false,
+          },
+        ],
+      },
+    );
+
+    expect(evaluateTurn(state).status).toEqual({ kind: "ongoing" });
+  });
+
+  it("rejects actions that are not currently legal", () => {
+    const state = createState([
+      king("white-king", "white", 2, 0),
+      rooky("white-rooky-a", "white", 0, 0),
+      king("black-king", "black", 4, 4),
+    ]);
+
+    expect(() =>
+      applyAction(state, {
+        type: "move",
+        pieceId: "white-rooky-a",
+        to: { file: 0, rank: 1 },
+      }),
+    ).toThrow("Illegal action.");
+  });
+
+  it("prevents actions after terminal states", () => {
+    const terminalState = createState(
+      [
+        king("white-king", "white", 0, 0),
+        king("black-king", "black", 2, 2),
+        rooky("black-rooky-a", "black", 0, 2, { south: 2 }),
+        rooky("black-rooky-b", "black", 2, 0, { west: 2 }),
+        rooky("black-rooky-c", "black", 2, 1, { west: 2 }),
+      ],
+      { activePlayer: "white" },
+    );
+
+    expect(terminalState.status).toEqual({
+      kind: "checkmate",
+      winner: "black",
+      loser: "white",
+    });
+
+    expect(() =>
+      applyAction(terminalState, {
+        type: "move",
+        pieceId: "white-king",
+        to: { file: 1, rank: 0 },
+      }),
+    ).toThrow("Cannot apply an action to a completed game.");
+  });
+
+  it("produces deterministic state hashes regardless of input piece order", () => {
+    const orderedPieces = [
+      king("white-king", "white", 2, 0),
+      rooky("white-rooky-a", "white", 0, 0, { north: 1 }),
+      king("black-king", "black", 2, 4),
+      rooky("black-rooky-a", "black", 0, 4, { south: 1 }),
+    ];
+
+    const reversedPieces = [...orderedPieces].reverse();
+    const stateA = createState(orderedPieces, { activePlayer: "white" });
+    const stateB = createState(reversedPieces, { activePlayer: "white" });
+
+    expect(getStateHash(stateA)).toBe(getStateHash(stateB));
+  });
+
+  it("changes action hash when capture outcome differs", () => {
+    const stateWithoutCapture = createState([
+      king("white-king", "white", 4, 0),
+      rooky("white-rooky-runner", "white", 0, 0, { east: 2 }),
+      king("black-king", "black", 4, 4),
+    ]);
+
+    const stateWithCapture = createState([
+      king("white-king", "white", 4, 0),
+      rooky("white-rooky-runner", "white", 0, 0, { east: 2 }),
+      rooky("black-rooky-target", "black", 2, 0),
+      king("black-king", "black", 4, 4),
+    ]);
+
+    const moveAction = {
+      type: "move" as const,
+      pieceId: "white-rooky-runner",
+      to: { file: 2, rank: 0 },
+    };
+
+    expect(getActionHash(stateWithoutCapture, moveAction)).not.toBe(
+      getActionHash(stateWithCapture, moveAction),
+    );
+  });
+
+  it("respects variant parameters that disable upgrades", () => {
+    const state = createGameState({
+      activePlayer: "white",
+      variant: {
+        ...classicVariantParameters,
+        allowUpgradeAction: false,
+      },
+      pieces: [
+        king("white-king", "white", 2, 0),
+        rooky("white-rooky-a", "white", 0, 0),
+        king("black-king", "black", 2, 4),
+      ],
+    });
+
+    const legalActions = generateLegalActions(state);
+
+    expect(legalActions.every((action) => action.type === "move")).toBe(true);
+  });
+
+  it("exposes defensive helper behavior through test-only internals", () => {
+    const board = classicVariantParameters.board;
+
+    expect(() =>
+      __coreTestOnly.applyMoveToPieces([], {
+        type: "move",
+        pieceId: "missing-piece",
+        to: { file: 0, rank: 0 },
+      }),
+    ).toThrow("Unknown piece missing-piece.");
+
+    expect(() =>
+      __coreTestOnly.applyUpgradeToPieces(
+        board,
+        [king("white-king", "white", 2, 0)],
+        {
+          type: "upgrade",
+          pieceId: "white-king",
+          direction: "north",
+        },
+      ),
+    ).toThrow("Only rookys can be upgraded.");
+
+    expect(() =>
+      __coreTestOnly.applyUpgradeToPieces(
+        board,
+        [rooky("white-rooky-a", "white", 0, 0, { north: 4 })],
+        {
+          type: "upgrade",
+          pieceId: "white-rooky-a",
+          direction: "north",
+        },
+      ),
+    ).toThrow("Upgrade exceeds directional range limit for the board.");
+
+    expect(
+      __coreTestOnly.getDirectionBetween(
+        { file: 0, rank: 0 },
+        { file: 1, rank: 1 },
+      ),
+    ).toBeNull();
+
+    const pathState = createState([
+      king("white-king", "white", 4, 0),
+      rooky("white-rooky-blocker", "white", 1, 0),
+      king("black-king", "black", 4, 4),
+    ]);
+
+    expect(
+      __coreTestOnly.isPathClear(
+        pathState,
+        { file: 0, rank: 0 },
+        { file: 1, rank: 1 },
+      ),
+    ).toBe(false);
+
+    expect(
+      __coreTestOnly.isPathClear(
+        pathState,
+        { file: 0, rank: 0 },
+        { file: 2, rank: 0 },
+      ),
+    ).toBe(false);
   });
 });

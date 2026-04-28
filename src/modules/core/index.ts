@@ -798,3 +798,10 @@ function getDirectionRangeCap(board: BoardState, direction: Direction): number {
 
   return Math.max(0, board.height - 1);
 }
+
+export const __coreTestOnly = {
+  applyMoveToPieces,
+  applyUpgradeToPieces,
+  getDirectionBetween,
+  isPathClear,
+} as const;

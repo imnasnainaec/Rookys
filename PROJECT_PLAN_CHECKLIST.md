@@ -68,7 +68,7 @@ Gate G2 status: Pending
 - [x] Implement upgrade action semantics and history reset behavior required by repetition rules.
 - [x] Implement terminal detection: check, checkmate, stalemate condition 1, stalemate condition 2.
 - [x] Add deterministic state+move hashing strategy and collision-resistant format.
-- [ ] Write comprehensive engine tests from rules text (positive and negative cases).
+- [x] Write comprehensive engine tests from rules text (positive and negative cases).
 - [ ] Review gate G2: engine passes all rule tests and independent review confirms rules parity.
 
 ## Phase 2 Execution Log
@@ -76,6 +76,8 @@ Gate G2 status: Pending
 - 2026-04-28: Implemented classic core engine state/action model and rule validations in `src/modules/core/index.ts`.
 - 2026-04-28: Added rule-focused engine tests and over-upgrade guard coverage in `src/modules/core/index.test.ts`.
 - 2026-04-28: Removed unused starter assets from `src/assets` as repository cleanup.
+- 2026-04-28: Expanded `src/modules/core/index.test.ts` with additional positive/negative legality, repetition, terminal-state, hashing, and variant-parameter coverage (15 total tests).
+- 2026-04-28: Verified Phase 2 quality rails green via `npm run typecheck`, `npm run lint`, `npm run test:run`, and `npm run build`; pending user gate decision for G2.
 
 ## Phase 3 - Local gameplay UI (depends on Phase 2)
 
