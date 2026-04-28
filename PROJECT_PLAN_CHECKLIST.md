@@ -86,12 +86,25 @@ Gate G2 status: Approved
 
 Gate G3 status: Pending
 
-- [ ] Build turn UX flow: select piece -> choose move/upgrade -> select target/direction.
-- [ ] Add legal-move highlighting, check/checkmate/stalemate state messaging, undo-disabled constraints matching final rules.
-- [ ] Add responsive layout and keyboard-accessible controls for essential actions.
-- [ ] Add game log panel for move/upgrade history and rule outcomes.
-- [ ] Add UI options panel for: choosing colors (black vs white, yellow vs red, red vs blue, yellow vs blue); choosing file/column labels (a,b,c,d,... vs q,w,e,r,... vs a,s,d,f,... vs z,x,c,v,...); turning on-off reachable-square highlighting (e.g., all squares reachable by a yellow piece are light yellow, reachable by a red piece are light red, and reachable by both are light orange);
+- [x] Build turn UX flow: select piece -> choose move/upgrade -> select target/direction.
+- [x] Add legal-move highlighting, check/checkmate/stalemate state messaging, undo-disabled constraints matching final rules.
+- [x] Add responsive layout and keyboard-accessible controls for essential actions.
+- [x] Add game log panel for move/upgrade history and rule outcomes.
+- [x] Add UI options panel for: choosing colors (black vs white, yellow vs red, red vs blue, yellow vs blue); choosing file/column labels (a,b,c,d,... vs q,w,e,r,... vs a,s,d,f,... vs z,x,c,v,...); turning on-off reachable-square highlighting (e.g., all squares reachable by a yellow piece are light yellow, reachable by a red piece are light red, and reachable by both are light orange);
+- [ ] Extract re-usable and/or generalizable components from `App.tsx` and divide up tests accordingly.
+- [ ] Enable keyboard selection of pieces (by rank-then-file or file-then-rank), which depends on user-selected file labels.
+- [ ] Replace the turn control panel with on-board mouse clicks (selected piece has clickable regions for upgrades and clickable squares for valid moves) and keyboard control (arrows to navigate between upgrade and move options, Enter to submit).
+- [ ] Update tests for the extracted component structure and expanded keyboard/on-board interaction model.
 - [ ] Review gate G3: complete local match can be played end-to-end with no logic/UI desync.
+
+## Phase 3 Execution Log
+
+- 2026-04-28: Replaced the scaffold landing page with a playable local classic match UI in `src/App.tsx`.
+- 2026-04-28: Added board interaction flow for selecting pieces, choosing move or upgrade actions, applying legal targets, and restarting the match.
+- 2026-04-28: Added legal-square highlighting, check/checkmate/stalemate status messaging, undo-disabled UX, and move/upgrade game log rendering.
+- 2026-04-28: Added responsive board and control styling plus UI options for palette selection, file-label sets, and reachable-square overlays in `src/App.css`.
+- 2026-04-28: Expanded `src/App.test.tsx` to cover move, upgrade, capture, restart, terminal-state messaging, option toggles, and UI guard paths.
+- 2026-04-28: Verified `npm run typecheck`, `npm run lint`, `npm run test:run`, and `npm run build` successfully with 100% statement/branch/function/line coverage.
 
 ## Phase 4 - P2P multiplayer completion before variants (depends on Phase 3)
 
