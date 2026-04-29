@@ -553,6 +553,38 @@ describe('App', () => {
     // If buffer was cleared, no piece should be selected
     expect(screen.getByText('No actions yet.')).toBeTruthy()
   })
+  it('persists game state to localStorage and restores it on remount', async () => {
+    const user = userEvent.setup()
+    const { unmount } = render(<App />)
+
+    await user.click(screen.getAllByLabelText('Square c1, white king')[0])
+    await user.click(screen.getAllByLabelText('Square b2, empty')[0])
+
+    expect(screen.getByText('Black to act')).toBeTruthy()
+
+    unmount()
+    render(<App />)
+
+    expect(screen.getByText('Black to act')).toBeTruthy()
+    expect(screen.getAllByLabelText('Square b2, white king')[0]).toBeTruthy()
+  })
+
+  it('falls back to fresh state when saved game state data is corrupted', () => {
+    localStorage.setItem('rookys-game-state', 'not valid json')
+    render(<App />)
+
+    expect(screen.getByText('White to act')).toBeTruthy()
+    expect(screen.getByText('No actions yet.')).toBeTruthy()
+  })
+
+  it('falls back to empty log when saved action log data is corrupted', () => {
+    localStorage.setItem('rookys-action-log', 'not valid json')
+    render(<App />)
+
+    expect(screen.getByText('White to act')).toBeTruthy()
+    expect(screen.getByText('No actions yet.')).toBeTruthy()
+  })
+
   it('handles keyboard coordinates mixed with arrow keys and entry', () => {
     render(
       <App

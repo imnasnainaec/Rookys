@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import './App.css'
 import {
@@ -46,16 +46,40 @@ const playerThemeClassNames: Record<string, string> = {
   'yellow-blue': 'theme-yellow-blue',
 }
 
+const GAME_STORAGE_KEY = 'rookys-game-state'
+const LOG_STORAGE_KEY = 'rookys-action-log'
+
 function App({ initialGameState }: AppProps) {
-  const [gameState, setGameState] = useState<GameState>(() => initialGameState ?? createClassicGameState())
+  const persistRef = useRef(initialGameState === undefined)
+  const [gameState, setGameState] = useState<GameState>(() => {
+    if (initialGameState !== undefined) return initialGameState
+    try {
+      const raw = localStorage.getItem(GAME_STORAGE_KEY)
+      if (raw !== null) return JSON.parse(raw) as GameState
+    } catch { /* corrupted — use fresh state */ }
+    return createClassicGameState()
+  })
   const [selectedPieceId, setSelectedPieceId] = useState<string | null>(null)
-  const [actionLog, setActionLog] = useState<readonly ActionLogEntry[]>([])
+  const [actionLog, setActionLog] = useState<readonly ActionLogEntry[]>(() => {
+    if (initialGameState !== undefined) return []
+    try {
+      const raw = localStorage.getItem(LOG_STORAGE_KEY)
+      if (raw !== null) return JSON.parse(raw) as readonly ActionLogEntry[]
+    } catch { /* corrupted — use empty log */ }
+    return []
+  })
   const [playerPaletteId, setPlayerPaletteId] = useState<PlayerPaletteId>('black-white')
   const [fileLabelSetId, setFileLabelSetId] = useState<FileLabelSetId>('alpha')
   const [showReachableSquares, setShowReachableSquares] = useState(true)
   const [activeKeyboardActionIndex, setActiveKeyboardActionIndex] = useState(0)
   const [coordinateBuffer, setCoordinateBuffer] = useState('')
   const boardPanelRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    if (!persistRef.current) return
+    localStorage.setItem(GAME_STORAGE_KEY, JSON.stringify(gameState))
+    localStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(actionLog))
+  }, [gameState, actionLog])
 
   const evaluation = evaluateTurn(gameState)
   const activePlayerLabel = getPlayerPalette(playerPaletteId).labels[gameState.turn.activePlayer]
