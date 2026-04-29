@@ -26,6 +26,7 @@ type BoardPanelProps = {
   readonly statusText: string
   readonly statusKind: string
   readonly activeKeyboardAction: TurnAction | null
+  readonly hasSelection: boolean
   readonly onSquarePress: (square: Square) => void
   readonly onUpgradePress: (action: UpgradeAction) => void
   readonly onKeyboardActionKeyDown: (event: React.KeyboardEvent<HTMLElement>) => void
@@ -56,6 +57,7 @@ export function BoardPanel({
   statusText,
   statusKind,
   activeKeyboardAction,
+  hasSelection,
   onSquarePress,
   onUpgradePress,
   onKeyboardActionKeyDown,
@@ -131,7 +133,11 @@ export function BoardPanel({
                   aria-label={describeSquareForAssistiveTech(square, piece)}
                   onClick={() => onSquarePress(square)}
                   onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
+                    if (event.key === ' ') {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      onSquarePress(square)
+                    } else if (event.key === 'Enter' && !hasSelection) {
                       event.preventDefault()
                       event.stopPropagation()
                       onSquarePress(square)

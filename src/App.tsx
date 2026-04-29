@@ -302,6 +302,7 @@ function App({ initialGameState }: AppProps) {
           statusText={describeStatus(evaluation.status, getPlayerPalette(playerPaletteId).labels)}
           statusKind={evaluation.status.kind}
           activeKeyboardAction={activeKeyboardAction}
+          hasSelection={selectedPieceId !== null}
           onSquarePress={handleSquarePress}
           onUpgradePress={commitAction}
           onKeyboardActionKeyDown={handleKeyboardActionKeyDown}
