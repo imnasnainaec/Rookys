@@ -1,6 +1,15 @@
 import { useState } from 'react'
 
 import './App.css'
+import { UiOptionsPanel } from './components/UiOptionsPanel'
+import {
+  fileLabelOptions,
+  playerPaletteOptions,
+  type FileLabelOption,
+  type FileLabelSetId,
+  type PlayerPaletteId,
+  type PlayerPaletteOption,
+} from './components/uiOptionsConfig'
 import {
   applyAction,
   createClassicGameState,
@@ -15,21 +24,6 @@ import {
   type TurnAction,
 } from './modules/core'
 
-type PlayerPaletteOption = {
-  readonly id: PlayerPaletteId
-  readonly label: string
-  readonly labels: Record<PlayerColor, string>
-}
-
-type FileLabelOption = {
-  readonly id: FileLabelSetId
-  readonly label: string
-  readonly labels: readonly string[]
-}
-
-type PlayerPaletteId = 'black-white' | 'yellow-red' | 'red-blue' | 'yellow-blue'
-type FileLabelSetId = 'alpha' | 'qwert' | 'home' | 'bottom'
-
 type ActionLogEntry = {
   readonly ply: number
   readonly text: string
@@ -39,36 +33,6 @@ type ActionLogEntry = {
 interface AppProps {
   readonly initialGameState?: GameState
 }
-
-const playerPaletteOptions: readonly PlayerPaletteOption[] = [
-  {
-    id: 'black-white',
-    label: 'Black vs White',
-    labels: { white: 'White', black: 'Black' },
-  },
-  {
-    id: 'yellow-red',
-    label: 'Yellow vs Red',
-    labels: { white: 'Yellow', black: 'Red' },
-  },
-  {
-    id: 'red-blue',
-    label: 'Red vs Blue',
-    labels: { white: 'Red', black: 'Blue' },
-  },
-  {
-    id: 'yellow-blue',
-    label: 'Yellow vs Blue',
-    labels: { white: 'Yellow', black: 'Blue' },
-  },
-] as const
-
-const fileLabelOptions: readonly FileLabelOption[] = [
-  { id: 'alpha', label: 'a, b, c, d, e', labels: ['a', 'b', 'c', 'd', 'e'] },
-  { id: 'qwert', label: 'q, w, e, r, t', labels: ['q', 'w', 'e', 'r', 't'] },
-  { id: 'home', label: 'a, s, d, f, g', labels: ['a', 's', 'd', 'f', 'g'] },
-  { id: 'bottom', label: 'z, x, c, v, b', labels: ['z', 'x', 'c', 'v', 'b'] },
-] as const
 
 const directionLabels: Record<Direction, string> = {
   north: 'North',
@@ -427,57 +391,14 @@ function App({ initialGameState }: AppProps) {
             </div>
           </section>
 
-          <section className="card options-panel">
-            <div className="panel-heading">
-              <div>
-                <h2>UI Options</h2>
-                <p>Match palette, file labels, and reachable-square overlays.</p>
-              </div>
-            </div>
-
-            <div className="option-group">
-              <span className="option-label">Piece colors</span>
-              <div className="chip-row" role="radiogroup" aria-label="Piece color options">
-                {playerPaletteOptions.map((option) => (
-                  <button
-                    key={option.id}
-                    className="chip-button"
-                    type="button"
-                    aria-pressed={playerPaletteId === option.id}
-                    onClick={() => setPlayerPaletteId(option.id)}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="option-group">
-              <span className="option-label">File labels</span>
-              <div className="chip-row" role="radiogroup" aria-label="File label options">
-                {fileLabelOptions.map((option) => (
-                  <button
-                    key={option.id}
-                    className="chip-button"
-                    type="button"
-                    aria-pressed={fileLabelSetId === option.id}
-                    onClick={() => setFileLabelSetId(option.id)}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <label className="toggle-row">
-              <input
-                checked={showReachableSquares}
-                type="checkbox"
-                onChange={(event) => setShowReachableSquares(event.target.checked)}
-              />
-              <span>Show reachable-square highlighting</span>
-            </label>
-          </section>
+          <UiOptionsPanel
+            playerPaletteId={playerPaletteId}
+            fileLabelSetId={fileLabelSetId}
+            showReachableSquares={showReachableSquares}
+            onPlayerPaletteChange={setPlayerPaletteId}
+            onFileLabelSetChange={setFileLabelSetId}
+            onReachableSquaresChange={setShowReachableSquares}
+          />
 
           <section className="card log-panel">
             <div className="panel-heading">
