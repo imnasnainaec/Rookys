@@ -1,3 +1,5 @@
+import { useEffect, useRef } from 'react'
+
 import type {
   Direction,
   PieceState,
@@ -64,8 +66,14 @@ export function BoardPanel({
   describeSquareForAssistiveTech,
   renderPieceMeta,
 }: BoardPanelProps) {
+  const sectionRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    sectionRef.current?.focus()
+  }, [])
+
   return (
-    <section className="card board-panel" aria-label="Game board panel" onKeyDown={onKeyboardActionKeyDown}>
+    <section ref={sectionRef} tabIndex={-1} className="card board-panel" aria-label="Game board panel" onKeyDown={onKeyboardActionKeyDown}>
       <div className="panel-heading">
         <div>
           <h2>Board</h2>
