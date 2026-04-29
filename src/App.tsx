@@ -1,6 +1,11 @@
 import { useState } from 'react'
 
 import './App.css'
+import {
+  BoardPanel,
+  type BoardSquareViewModel,
+  type SelectionOrder,
+} from './components/BoardPanel'
 import { GameLogPanel } from './components/GameLogPanel'
 import { UiOptionsPanel } from './components/UiOptionsPanel'
 import {
@@ -16,13 +21,13 @@ import {
   createClassicGameState,
   evaluateTurn,
   getPieceAtSquare,
-  type Direction,
   type GameState,
   type MoveAction,
   type PieceState,
   type PlayerColor,
   type Square,
   type TurnAction,
+  type UpgradeAction,
 } from './modules/core'
 
 type ActionLogEntry = {
@@ -35,13 +40,6 @@ interface AppProps {
   readonly initialGameState?: GameState
 }
 
-const directionLabels: Record<Direction, string> = {
-  north: 'North',
-  south: 'South',
-  east: 'East',
-  west: 'West',
-}
-
 const playerThemeClassNames: Record<string, string> = {
   'black-white': 'theme-black-white',
   'yellow-red': 'theme-yellow-red',
@@ -52,11 +50,13 @@ const playerThemeClassNames: Record<string, string> = {
 function App({ initialGameState }: AppProps) {
   const [gameState, setGameState] = useState<GameState>(() => initialGameState ?? createClassicGameState())
   const [selectedPieceId, setSelectedPieceId] = useState<string | null>(null)
-  const [selectedActionType, setSelectedActionType] = useState<TurnAction['type'] | null>(null)
   const [actionLog, setActionLog] = useState<readonly ActionLogEntry[]>([])
   const [playerPaletteId, setPlayerPaletteId] = useState<PlayerPaletteId>('black-white')
   const [fileLabelSetId, setFileLabelSetId] = useState<FileLabelSetId>('alpha')
   const [showReachableSquares, setShowReachableSquares] = useState(true)
+  const [squareSelectionOrder, setSquareSelectionOrder] = useState<SelectionOrder>('file-rank')
+  const [squareSelectionInput, setSquareSelectionInput] = useState('')
+  const [activeKeyboardActionIndex, setActiveKeyboardActionIndex] = useState(0)
 
   const evaluation = evaluateTurn(gameState)
   const activePlayerLabel = getPlayerPalette(playerPaletteId).labels[gameState.turn.activePlayer]
@@ -72,10 +72,23 @@ function App({ initialGameState }: AppProps) {
     (action): action is MoveAction => action.type === 'move',
   )
   const selectedPieceUpgradeActions = selectedPieceActions.filter(
-    (action) => action.type === 'upgrade',
+    (action): action is UpgradeAction => action.type === 'upgrade',
   )
-  const availableActionTypes = Array.from(new Set(selectedPieceActions.map((action) => action.type)))
   const fileLabels = getFileLabelOption(fileLabelSetId).labels
+  const keyboardActions = [
+    ...selectedPieceMoveActions.map((action) => ({
+      action,
+      label: `Move to ${formatSquare(action.to, fileLabels)}`,
+    })),
+    ...selectedPieceUpgradeActions.map((action) => ({
+      action,
+      label: `Upgrade ${action.direction}`,
+    })),
+  ]
+  const normalizedKeyboardActionIndex =
+    keyboardActions.length === 0 ? 0 : activeKeyboardActionIndex % keyboardActions.length
+  const activeKeyboardAction =
+    keyboardActions.length === 0 ? null : keyboardActions[normalizedKeyboardActionIndex].action
   const reachableSquareSets = showReachableSquares
     ? {
         white: getReachableSquareSet(gameState, 'white'),
@@ -86,15 +99,7 @@ function App({ initialGameState }: AppProps) {
         black: new Set<string>(),
       }
 
-  const boardSquares = [] as Array<{
-    square: Square
-    piece: PieceState | undefined
-    squareKey: string
-    isMoveTarget: boolean
-    isSelected: boolean
-    isPieceSelectable: boolean
-    reachableClassName: string
-  }>
+  const boardSquares: BoardSquareViewModel[] = []
 
   for (let rank = gameState.variant.board.height - 1; rank >= 0; rank -= 1) {
     for (let file = 0; file < gameState.variant.board.width; file += 1) {
@@ -106,21 +111,20 @@ function App({ initialGameState }: AppProps) {
         square,
         piece,
         squareKey,
-        isMoveTarget:
-          selectedActionType === 'move' &&
-          selectedPieceMoveActions.some((action) => areSquaresEqual(action.to, square)),
+        isMoveTarget: selectedPieceMoveActions.some((action) => areSquaresEqual(action.to, square)),
         isSelected: piece?.id === selectedPieceId,
         isPieceSelectable:
           piece?.owner === gameState.turn.activePlayer &&
           evaluation.legalActions.some((action) => action.pieceId === piece.id),
         reachableClassName: getReachableClassName(squareKey, reachableSquareSets),
+        upgradeActions: piece?.id === selectedPieceId ? selectedPieceUpgradeActions : [],
       })
     }
   }
 
   function resetSelection() {
     setSelectedPieceId(null)
-    setSelectedActionType(null)
+    setActiveKeyboardActionIndex(0)
   }
 
   function handlePieceSelection(piece: PieceState) {
@@ -131,15 +135,6 @@ function App({ initialGameState }: AppProps) {
     }
 
     setSelectedPieceId(piece.id)
-
-    const nextActionTypes = Array.from(new Set(pieceActions.map((action) => action.type)))
-
-    if (nextActionTypes.length === 1) {
-      setSelectedActionType(nextActionTypes[0])
-      return
-    }
-
-    setSelectedActionType(null)
   }
 
   function handleSquarePress(square: Square) {
@@ -150,7 +145,7 @@ function App({ initialGameState }: AppProps) {
       return
     }
 
-    if (selectedActionType !== 'move' || selectedPiece === null) {
+    if (selectedPiece === null) {
       return
     }
 
@@ -180,13 +175,57 @@ function App({ initialGameState }: AppProps) {
       },
     ])
     setGameState(nextState)
+    setSquareSelectionInput('')
     resetSelection()
   }
 
   function handleRestart() {
     setGameState(initialGameState ?? createClassicGameState())
     setActionLog([])
+    setSquareSelectionInput('')
     resetSelection()
+  }
+
+  function handleKeyboardSelectionSubmit() {
+    const square = parseSquareSelectionInput(
+      squareSelectionInput,
+      squareSelectionOrder,
+      fileLabels,
+      gameState.variant.board.height,
+    )
+
+    if (!square) {
+      return
+    }
+
+    handleSquarePress(square)
+  }
+
+  function handleKeyboardActionKeyDown(event: React.KeyboardEvent<HTMLElement>) {
+    const target = event.target as HTMLElement
+
+    if (target.tagName === 'INPUT' || keyboardActions.length === 0) {
+      return
+    }
+
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+      event.preventDefault()
+      setActiveKeyboardActionIndex((previous) => (previous + 1) % keyboardActions.length)
+      return
+    }
+
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+      event.preventDefault()
+      setActiveKeyboardActionIndex(
+        (previous) => (previous - 1 + keyboardActions.length) % keyboardActions.length,
+      )
+      return
+    }
+
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      commitAction(keyboardActions[normalizedKeyboardActionIndex].action)
+    }
   }
 
   return (
@@ -212,186 +251,42 @@ function App({ initialGameState }: AppProps) {
       </header>
 
       <section className="dashboard-grid">
-        <section className="card board-panel" aria-label="Game board panel">
-          <div className="panel-heading">
-            <div>
-              <h2>Board</h2>
-              <p>{activePlayerLabel} to act</p>
-            </div>
-            <div className="status-pill" data-status={evaluation.status.kind}>
-              {describeStatus(evaluation.status, getPlayerPalette(playerPaletteId).labels)}
-            </div>
-          </div>
-
-          <div className="board-wrapper">
-            <div className="board-ranks" aria-hidden="true">
-              {Array.from({ length: gameState.variant.board.height }, (_, index) => {
-                const rankValue = gameState.variant.board.height - index
-
-                return (
-                  <span key={rankValue} className="axis-label">
-                    {rankValue}
-                  </span>
-                )
-              })}
-            </div>
-
-            <div
-              className="board-grid"
-              role="grid"
-              aria-label="Rookys board"
-              style={{
-                gridTemplateColumns: `repeat(${gameState.variant.board.width}, minmax(0, 1fr))`,
-              }}
-            >
-              {boardSquares.map(
-                ({
-                  square,
-                  piece,
-                  squareKey,
-                  isMoveTarget,
-                  isSelected,
-                  isPieceSelectable,
-                  reachableClassName,
-                }) => (
-                  <button
-                    key={squareKey}
-                    className={[
-                      'board-square',
-                      (square.file + square.rank) % 2 === 0 ? 'light-square' : 'dark-square',
-                      piece?.owner === 'white' ? 'piece-white' : '',
-                      piece?.owner === 'black' ? 'piece-black' : '',
-                      isMoveTarget ? 'move-target' : '',
-                      isSelected ? 'selected-square' : '',
-                      isPieceSelectable ? 'selectable-square' : '',
-                      reachableClassName,
-                    ]
-                      .filter(Boolean)
-                      .join(' ')}
-                    type="button"
-                    role="gridcell"
-                    aria-pressed={isSelected}
-                    aria-label={describeSquareForAssistiveTech(square, piece, fileLabels)}
-                    onClick={() => handleSquarePress(square)}
-                  >
-                    <span className="square-coordinate">
-                      {fileLabels[square.file]}
-                      {square.rank + 1}
-                    </span>
-                    {piece ? (
-                      <span className="piece-stack">
-                        <span className="piece-symbol">{piece.kind === 'king' ? 'K' : 'R'}</span>
-                        <span className="piece-meta">
-                          {getPlayerPalette(playerPaletteId).labels[piece.owner]}
-                          {piece.kind === 'rooky'
-                            ? ` ${formatRookyRanges(piece)}`
-                            : ' king'}
-                        </span>
-                      </span>
-                    ) : isMoveTarget ? (
-                      <span className="target-marker">Move</span>
-                    ) : null}
-                  </button>
-                ),
-              )}
-            </div>
-          </div>
-
-          <div className="board-files" aria-hidden="true">
-            {fileLabels.map((label) => (
-              <span key={label} className="axis-label">
-                {label}
-              </span>
-            ))}
-          </div>
-        </section>
+        <BoardPanel
+          boardWidth={gameState.variant.board.width}
+          boardHeight={gameState.variant.board.height}
+          boardSquares={boardSquares}
+          fileLabels={fileLabels}
+          activePlayerLabel={activePlayerLabel}
+          statusText={describeStatus(evaluation.status, getPlayerPalette(playerPaletteId).labels)}
+          statusKind={evaluation.status.kind}
+          selectedPieceSummary={
+            selectedPiece
+              ? `${getPlayerPalette(playerPaletteId).labels[selectedPiece.owner]} ${selectedPiece.kind}`
+              : 'none'
+          }
+          keyboardSelectionOrder={squareSelectionOrder}
+          keyboardSelectionInput={squareSelectionInput}
+          keyboardActions={keyboardActions}
+          activeKeyboardActionIndex={normalizedKeyboardActionIndex}
+          activeKeyboardAction={activeKeyboardAction}
+          onSquarePress={handleSquarePress}
+          onUpgradePress={commitAction}
+          onKeyboardSelectionOrderChange={setSquareSelectionOrder}
+          onKeyboardSelectionInputChange={setSquareSelectionInput}
+          onKeyboardSelectionSubmit={handleKeyboardSelectionSubmit}
+          onKeyboardActionKeyDown={handleKeyboardActionKeyDown}
+          onClearSelection={resetSelection}
+          describeSquareForAssistiveTech={(square, piece) =>
+            describeSquareForAssistiveTech(square, piece, fileLabels)
+          }
+          renderPieceMeta={(piece) =>
+            `${getPlayerPalette(playerPaletteId).labels[piece.owner]}${
+              piece.kind === 'rooky' ? ` ${formatRookyRanges(piece)}` : ' king'
+            }`
+          }
+        />
 
         <section className="sidebar-stack">
-          <section className="card control-panel">
-            <div className="panel-heading">
-              <div>
-                <h2>Turn Controls</h2>
-                <p>
-                  {selectedPiece
-                    ? `Selected ${getPlayerPalette(playerPaletteId).labels[selectedPiece.owner]} ${selectedPiece.kind}`
-                    : 'Select an active piece to continue'}
-                </p>
-              </div>
-            </div>
-
-            <div className="selection-panel">
-              <div className="action-choice-row" role="group" aria-label="Action choices">
-                <button
-                  className="secondary-button"
-                  type="button"
-                  disabled={!availableActionTypes.includes('move')}
-                  data-active={selectedActionType === 'move'}
-                  onClick={() => setSelectedActionType('move')}
-                >
-                  Choose move
-                </button>
-                <button
-                  className="secondary-button"
-                  type="button"
-                  disabled={!availableActionTypes.includes('upgrade')}
-                  data-active={selectedActionType === 'upgrade'}
-                  onClick={() => setSelectedActionType('upgrade')}
-                >
-                  Choose upgrade
-                </button>
-                <button className="ghost-button" type="button" onClick={resetSelection}>
-                  Clear
-                </button>
-              </div>
-
-              <div className="target-grid">
-                <div>
-                  <h3>Move targets</h3>
-                  <ul className="target-list">
-                    {selectedPieceMoveActions.length > 0 ? (
-                      selectedPieceMoveActions.map((action) => (
-                        <li key={`${action.pieceId}-${serializeSquare(action.to)}`}>
-                          <button
-                            className="secondary-button target-button"
-                            type="button"
-                            disabled={selectedActionType !== 'move'}
-                            onClick={() => commitAction(action)}
-                          >
-                            {formatSquare(action.to, fileLabels)}
-                          </button>
-                        </li>
-                      ))
-                    ) : (
-                      <li className="empty-state">No legal move targets</li>
-                    )}
-                  </ul>
-                </div>
-
-                <div>
-                  <h3>Upgrade directions</h3>
-                  <ul className="target-list">
-                    {selectedPieceUpgradeActions.length > 0 ? (
-                      selectedPieceUpgradeActions.map((action) => (
-                        <li key={`${action.pieceId}-${action.direction}`}>
-                          <button
-                            className="secondary-button target-button"
-                            type="button"
-                            disabled={selectedActionType !== 'upgrade'}
-                            onClick={() => commitAction(action)}
-                          >
-                            {directionLabels[action.direction]}
-                          </button>
-                        </li>
-                      ))
-                    ) : (
-                      <li className="empty-state">No legal upgrades</li>
-                    )}
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </section>
-
           <UiOptionsPanel
             playerPaletteId={playerPaletteId}
             fileLabelSetId={fileLabelSetId}
@@ -524,6 +419,38 @@ function serializeSquare(square: Square): string {
 
 function areSquaresEqual(left: Square, right: Square): boolean {
   return left.file === right.file && left.rank === right.rank
+}
+
+function parseSquareSelectionInput(
+  rawInput: string,
+  order: SelectionOrder,
+  fileLabels: readonly string[],
+  boardHeight: number,
+): Square | null {
+  const cleanedInput = rawInput.trim().toLowerCase()
+
+  if (cleanedInput.length < 2) {
+    return null
+  }
+
+  const fileToken =
+    order === 'file-rank' ? cleanedInput.charAt(0) : cleanedInput.charAt(cleanedInput.length - 1)
+  const rankToken =
+    order === 'file-rank'
+      ? cleanedInput.slice(1)
+      : cleanedInput.slice(0, cleanedInput.length - 1)
+
+  const file = fileLabels.findIndex((label) => label.toLowerCase() === fileToken)
+  const rank = Number.parseInt(rankToken, 10) - 1
+
+  if (file < 0 || Number.isNaN(rank) || rank < 0 || rank >= boardHeight) {
+    return null
+  }
+
+  return {
+    file,
+    rank,
+  }
 }
 
 export default App
