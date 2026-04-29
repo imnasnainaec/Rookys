@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
 import './App.css'
+import { GameLogPanel } from './components/GameLogPanel'
 import { UiOptionsPanel } from './components/UiOptionsPanel'
 import {
   fileLabelOptions,
@@ -400,28 +401,7 @@ function App({ initialGameState }: AppProps) {
             onReachableSquaresChange={setShowReachableSquares}
           />
 
-          <section className="card log-panel">
-            <div className="panel-heading">
-              <div>
-                <h2>Game Log</h2>
-                <p>Move and upgrade history with resulting state.</p>
-              </div>
-            </div>
-
-            <ol className="log-list">
-              {actionLog.length > 0 ? (
-                actionLog.map((entry) => (
-                  <li key={`${entry.ply}-${entry.text}`}>
-                    <strong>Ply {entry.ply}</strong>
-                    <span>{entry.text}</span>
-                    <em>{entry.outcome}</em>
-                  </li>
-                ))
-              ) : (
-                <li className="empty-state">No actions yet.</li>
-              )}
-            </ol>
-          </section>
+          <GameLogPanel entries={actionLog} />
         </section>
       </section>
     </main>
