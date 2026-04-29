@@ -1,1 +1,6 @@
-// Intentionally empty until test libraries are installed.
+import { afterEach } from "vitest";
+import { cleanup } from "@testing-library/react";
+
+afterEach(() => {
+  cleanup();
+});
