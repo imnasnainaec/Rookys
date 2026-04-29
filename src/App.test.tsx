@@ -84,8 +84,6 @@ describe('App', () => {
     expect(
       screen.getByRole('button', { name: 'Undo unavailable in final rules' }).matches(':disabled'),
     ).toBe(true)
-    expect(screen.getByRole('region', { name: 'Board keyboard controls' })).toBeTruthy()
-    expect(screen.getByLabelText('Keyboard square selection')).toBeTruthy()
     expect(screen.getByText('UI Options')).toBeTruthy()
     expect(screen.getByText('Game Log')).toBeTruthy()
   })
@@ -122,30 +120,7 @@ describe('App', () => {
     expect(screen.getByText('white-rooky-a upgraded north')).toBeTruthy()
   })
 
-  it('supports keyboard square selection in file-rank and rank-file order', async () => {
-    const user = userEvent.setup()
-
-    render(<App />)
-
-    await user.type(screen.getByLabelText('Keyboard square selection'), 'c1')
-    await user.click(screen.getByRole('button', { name: 'Select square' }))
-
-    expect(screen.getByText(/Selected piece: White king/i)).toBeTruthy()
-
-    await user.click(screen.getByRole('button', { name: 'q, w, e, r, t' }))
-    await user.click(screen.getByRole('button', { name: 'Rank then file' }))
-    await user.click(screen.getByRole('button', { name: 'File then rank' }))
-    await user.click(screen.getByRole('button', { name: 'Rank then file' }))
-    await user.clear(screen.getByLabelText('Keyboard square selection'))
-    await user.type(screen.getByLabelText('Keyboard square selection'), '1q')
-    await user.click(screen.getByRole('button', { name: 'Select square' }))
-
-    expect(screen.getByText(/Selected piece: White rooky/i)).toBeTruthy()
-  })
-
   it('submits highlighted keyboard action with arrows and enter', async () => {
-    const user = userEvent.setup()
-
     render(
       <App
         initialGameState={createState(
@@ -159,17 +134,17 @@ describe('App', () => {
       />,
     )
 
-    await user.click(screen.getAllByLabelText('Square a1, white rooky')[0])
+  fireEvent.click(screen.getAllByLabelText('Square a1, white rooky')[0])
 
-    const keyboardRegion = screen.getByRole('region', { name: 'Board keyboard controls' })
-    await user.click(keyboardRegion)
-    await user.keyboard('{ArrowRight}{Enter}')
+  const boardPanel = screen.getByRole('region', { name: 'Game board panel' })
+  fireEvent.keyDown(boardPanel, { key: 'ArrowRight' })
+  fireEvent.keyDown(boardPanel, { key: 'Enter' })
 
     expect(screen.getByText('white-rooky-a upgraded north')).toBeTruthy()
     expect(screen.getByText('Black to act')).toBeTruthy()
   })
 
-  it('supports direct keyboard-region keydown handling', () => {
+  it('supports direct board keydown handling and Escape to clear selection', () => {
     render(
       <App
         initialGameState={createState(
@@ -183,24 +158,27 @@ describe('App', () => {
       />,
     )
 
-    const keyboardRegion = screen.getByRole('region', { name: 'Board keyboard controls' })
+    const boardPanel = screen.getByRole('region', { name: 'Game board panel' })
 
-    fireEvent.keyDown(keyboardRegion, { key: 'ArrowRight' })
-    fireEvent.keyDown(keyboardRegion, { key: 'Enter' })
-    fireEvent.keyDown(keyboardRegion, { key: 'Tab' })
+    fireEvent.keyDown(boardPanel, { key: 'ArrowRight' })
+    fireEvent.keyDown(boardPanel, { key: 'Enter' })
+    fireEvent.keyDown(boardPanel, { key: 'Tab' })
 
     expect(screen.getByText('No actions yet.')).toBeTruthy()
 
     fireEvent.click(screen.getAllByLabelText('Square a1, white rooky')[0])
-    fireEvent.keyDown(keyboardRegion, { key: 'Tab' })
-    fireEvent.keyDown(keyboardRegion, { key: 'Enter' })
+    fireEvent.keyDown(boardPanel, { key: 'Escape' })
+
+    expect(screen.getByText('No actions yet.')).toBeTruthy()
+
+    fireEvent.click(screen.getAllByLabelText('Square a1, white rooky')[0])
+    fireEvent.keyDown(boardPanel, { key: 'Tab' })
+    fireEvent.keyDown(boardPanel, { key: 'Enter' })
 
     expect(screen.queryByText('No actions yet.')).toBeNull()
   })
 
-  it('handles alternate arrow keys and ignores keyboard action when input is focused', async () => {
-    const user = userEvent.setup()
-
+  it('handles arrow key cycling and Escape to clear selection', async () => {
     render(
       <App
         initialGameState={createState(
@@ -214,45 +192,19 @@ describe('App', () => {
       />,
     )
 
-    await user.click(screen.getAllByLabelText('Square a1, white rooky')[0])
+    fireEvent.click(screen.getAllByLabelText('Square a1, white rooky')[0])
 
-    const keyboardRegion = screen.getByRole('region', { name: 'Board keyboard controls' })
-    await user.click(keyboardRegion)
-    await user.keyboard('{ArrowDown}{ArrowLeft}{ArrowUp}{Enter}')
+    const boardPanel = screen.getByRole('region', { name: 'Game board panel' })
+    fireEvent.keyDown(boardPanel, { key: 'ArrowDown' })
+    fireEvent.keyDown(boardPanel, { key: 'ArrowLeft' })
+    fireEvent.keyDown(boardPanel, { key: 'ArrowUp' })
+    fireEvent.keyDown(boardPanel, { key: 'Enter' })
 
     expect(screen.getByText('Black to act')).toBeTruthy()
     expect(screen.queryByText('No actions yet.')).toBeNull()
-
-    await user.click(screen.getByLabelText('Keyboard square selection'))
-    await user.keyboard('{Enter}')
-
-    expect(screen.getByText('Black to act')).toBeTruthy()
   })
 
-  it('ignores invalid keyboard square input values', async () => {
-    const user = userEvent.setup()
 
-    render(<App />)
-
-    const input = screen.getByLabelText('Keyboard square selection')
-
-    await user.type(input, 'y9')
-    await user.click(screen.getByRole('button', { name: 'Select square' }))
-    expect(screen.getByText(/Selected piece: none/i)).toBeTruthy()
-
-    await user.clear(input)
-    await user.type(input, 'c')
-    await user.click(screen.getByRole('button', { name: 'Select square' }))
-    expect(screen.getByText(/Selected piece: none/i)).toBeTruthy()
-
-    await user.clear(input)
-    await user.type(input, 'c1')
-    await user.click(screen.getByRole('button', { name: 'Select square' }))
-    expect(screen.getByText(/Selected piece: White king/i)).toBeTruthy()
-
-    await user.click(screen.getByRole('button', { name: 'Clear selection' }))
-    expect(screen.getByText(/Selected piece: none/i)).toBeTruthy()
-  })
 
   it('allows gridcell enter key activation for square selection and move commit', async () => {
     const user = userEvent.setup()
@@ -465,10 +417,10 @@ describe('App', () => {
     )
 
     await user.click(screen.getAllByLabelText('Square a3, empty')[0])
-    expect(screen.getByText(/Selected piece: none/i)).toBeTruthy()
+    expect(screen.getByText('No actions yet.')).toBeTruthy()
 
     await user.click(screen.getAllByLabelText('Square a1, white rooky')[0])
-    expect(screen.getByText(/Selected piece: none/i)).toBeTruthy()
+    expect(screen.getByText('No actions yet.')).toBeTruthy()
 
     await user.click(screen.getAllByLabelText('Square c1, white king')[0])
     await user.click(screen.getAllByLabelText('Square a3, empty')[0])
@@ -485,7 +437,6 @@ describe('App', () => {
     await user.click(screen.getAllByLabelText('Square a5, black rooky')[0])
 
     expect(screen.getByText('White to act')).toBeTruthy()
-    expect(screen.getByText(/Selected piece: none/i)).toBeTruthy()
     expect(screen.getByText('No actions yet.')).toBeTruthy()
   })
 

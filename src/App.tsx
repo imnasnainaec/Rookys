@@ -4,7 +4,6 @@ import './App.css'
 import {
   BoardPanel,
   type BoardSquareViewModel,
-  type SelectionOrder,
 } from './components/BoardPanel'
 import { GameLogPanel } from './components/GameLogPanel'
 import { UiOptionsPanel } from './components/UiOptionsPanel'
@@ -54,8 +53,6 @@ function App({ initialGameState }: AppProps) {
   const [playerPaletteId, setPlayerPaletteId] = useState<PlayerPaletteId>('black-white')
   const [fileLabelSetId, setFileLabelSetId] = useState<FileLabelSetId>('alpha')
   const [showReachableSquares, setShowReachableSquares] = useState(true)
-  const [squareSelectionOrder, setSquareSelectionOrder] = useState<SelectionOrder>('file-rank')
-  const [squareSelectionInput, setSquareSelectionInput] = useState('')
   const [activeKeyboardActionIndex, setActiveKeyboardActionIndex] = useState(0)
 
   const evaluation = evaluateTurn(gameState)
@@ -175,36 +172,23 @@ function App({ initialGameState }: AppProps) {
       },
     ])
     setGameState(nextState)
-    setSquareSelectionInput('')
     resetSelection()
   }
 
   function handleRestart() {
     setGameState(initialGameState ?? createClassicGameState())
     setActionLog([])
-    setSquareSelectionInput('')
     resetSelection()
   }
 
-  function handleKeyboardSelectionSubmit() {
-    const square = parseSquareSelectionInput(
-      squareSelectionInput,
-      squareSelectionOrder,
-      fileLabels,
-      gameState.variant.board.height,
-    )
-
-    if (!square) {
+  function handleKeyboardActionKeyDown(event: React.KeyboardEvent<HTMLElement>) {
+    if (keyboardActions.length === 0 && event.key !== 'Escape') {
       return
     }
 
-    handleSquarePress(square)
-  }
-
-  function handleKeyboardActionKeyDown(event: React.KeyboardEvent<HTMLElement>) {
-    const target = event.target as HTMLElement
-
-    if (target.tagName === 'INPUT' || keyboardActions.length === 0) {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      resetSelection()
       return
     }
 
@@ -259,23 +243,10 @@ function App({ initialGameState }: AppProps) {
           activePlayerLabel={activePlayerLabel}
           statusText={describeStatus(evaluation.status, getPlayerPalette(playerPaletteId).labels)}
           statusKind={evaluation.status.kind}
-          selectedPieceSummary={
-            selectedPiece
-              ? `${getPlayerPalette(playerPaletteId).labels[selectedPiece.owner]} ${selectedPiece.kind}`
-              : 'none'
-          }
-          keyboardSelectionOrder={squareSelectionOrder}
-          keyboardSelectionInput={squareSelectionInput}
-          keyboardActions={keyboardActions}
-          activeKeyboardActionIndex={normalizedKeyboardActionIndex}
           activeKeyboardAction={activeKeyboardAction}
           onSquarePress={handleSquarePress}
           onUpgradePress={commitAction}
-          onKeyboardSelectionOrderChange={setSquareSelectionOrder}
-          onKeyboardSelectionInputChange={setSquareSelectionInput}
-          onKeyboardSelectionSubmit={handleKeyboardSelectionSubmit}
           onKeyboardActionKeyDown={handleKeyboardActionKeyDown}
-          onClearSelection={resetSelection}
           describeSquareForAssistiveTech={(square, piece) =>
             describeSquareForAssistiveTech(square, piece, fileLabels)
           }
@@ -419,38 +390,6 @@ function serializeSquare(square: Square): string {
 
 function areSquaresEqual(left: Square, right: Square): boolean {
   return left.file === right.file && left.rank === right.rank
-}
-
-function parseSquareSelectionInput(
-  rawInput: string,
-  order: SelectionOrder,
-  fileLabels: readonly string[],
-  boardHeight: number,
-): Square | null {
-  const cleanedInput = rawInput.trim().toLowerCase()
-
-  if (cleanedInput.length < 2) {
-    return null
-  }
-
-  const fileToken =
-    order === 'file-rank' ? cleanedInput.charAt(0) : cleanedInput.charAt(cleanedInput.length - 1)
-  const rankToken =
-    order === 'file-rank'
-      ? cleanedInput.slice(1)
-      : cleanedInput.slice(0, cleanedInput.length - 1)
-
-  const file = fileLabels.findIndex((label) => label.toLowerCase() === fileToken)
-  const rank = Number.parseInt(rankToken, 10) - 1
-
-  if (file < 0 || Number.isNaN(rank) || rank < 0 || rank >= boardHeight) {
-    return null
-  }
-
-  return {
-    file,
-    rank,
-  }
 }
 
 export default App

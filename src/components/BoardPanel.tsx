@@ -6,8 +6,6 @@ import type {
   UpgradeAction,
 } from '../modules/core'
 
-export type SelectionOrder = 'file-rank' | 'rank-file'
-
 export type BoardSquareViewModel = {
   readonly square: Square
   readonly piece: PieceState | undefined
@@ -27,19 +25,10 @@ type BoardPanelProps = {
   readonly activePlayerLabel: string
   readonly statusText: string
   readonly statusKind: string
-  readonly selectedPieceSummary: string
-  readonly keyboardSelectionOrder: SelectionOrder
-  readonly keyboardSelectionInput: string
-  readonly keyboardActions: readonly { readonly label: string; readonly action: TurnAction }[]
-  readonly activeKeyboardActionIndex: number
   readonly activeKeyboardAction: TurnAction | null
   readonly onSquarePress: (square: Square) => void
   readonly onUpgradePress: (action: UpgradeAction) => void
-  readonly onKeyboardSelectionOrderChange: (value: SelectionOrder) => void
-  readonly onKeyboardSelectionInputChange: (value: string) => void
-  readonly onKeyboardSelectionSubmit: () => void
   readonly onKeyboardActionKeyDown: (event: React.KeyboardEvent<HTMLElement>) => void
-  readonly onClearSelection: () => void
   readonly describeSquareForAssistiveTech: (square: Square, piece: PieceState | undefined) => string
   readonly renderPieceMeta: (piece: PieceState) => string
 }
@@ -66,24 +55,15 @@ export function BoardPanel({
   activePlayerLabel,
   statusText,
   statusKind,
-  selectedPieceSummary,
-  keyboardSelectionOrder,
-  keyboardSelectionInput,
-  keyboardActions,
-  activeKeyboardActionIndex,
   activeKeyboardAction,
   onSquarePress,
   onUpgradePress,
-  onKeyboardSelectionOrderChange,
-  onKeyboardSelectionInputChange,
-  onKeyboardSelectionSubmit,
   onKeyboardActionKeyDown,
-  onClearSelection,
   describeSquareForAssistiveTech,
   renderPieceMeta,
 }: BoardPanelProps) {
   return (
-    <section className="card board-panel" aria-label="Game board panel">
+    <section className="card board-panel" aria-label="Game board panel" onKeyDown={onKeyboardActionKeyDown}>
       <div className="panel-heading">
         <div>
           <h2>Board</h2>
@@ -92,75 +72,6 @@ export function BoardPanel({
         <div className="status-pill" data-status={statusKind}>
           {statusText}
         </div>
-      </div>
-
-      <div
-        className="board-keyboard-shell"
-        role="region"
-        aria-label="Board keyboard controls"
-        tabIndex={0}
-        onKeyDown={onKeyboardActionKeyDown}
-      >
-        <p className="keyboard-hint">
-          Selected piece: {selectedPieceSummary}. Use arrow keys to cycle move and upgrade options,
-          then press Enter to submit.
-        </p>
-
-        <div className="keyboard-picker-row">
-          <div className="chip-row" role="radiogroup" aria-label="Keyboard square input order">
-            <button
-              className="chip-button"
-              type="button"
-              aria-pressed={keyboardSelectionOrder === 'file-rank'}
-              onClick={() => onKeyboardSelectionOrderChange('file-rank')}
-            >
-              File then rank
-            </button>
-            <button
-              className="chip-button"
-              type="button"
-              aria-pressed={keyboardSelectionOrder === 'rank-file'}
-              onClick={() => onKeyboardSelectionOrderChange('rank-file')}
-            >
-              Rank then file
-            </button>
-          </div>
-
-          <div className="keyboard-input-row">
-            <label htmlFor="square-picker-input" className="option-label">
-              Keyboard square selection
-            </label>
-            <input
-              id="square-picker-input"
-              className="square-picker-input"
-              value={keyboardSelectionInput}
-              onChange={(event) => onKeyboardSelectionInputChange(event.target.value)}
-              placeholder={keyboardSelectionOrder === 'file-rank' ? `${fileLabels[0]}1` : `1${fileLabels[0]}`}
-              aria-label="Keyboard square selection"
-            />
-            <button className="secondary-button" type="button" onClick={onKeyboardSelectionSubmit}>
-              Select square
-            </button>
-            <button className="ghost-button" type="button" onClick={onClearSelection}>
-              Clear selection
-            </button>
-          </div>
-        </div>
-
-        {keyboardActions.length > 0 ? (
-          <ol className="keyboard-option-list" aria-label="Keyboard action options">
-            {keyboardActions.map((option, index) => (
-              <li
-                key={`${option.label}-${index}`}
-                className={index === activeKeyboardActionIndex ? 'active-keyboard-option' : ''}
-              >
-                {option.label}
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <p className="empty-state">Select an active piece to populate keyboard options.</p>
-        )}
       </div>
 
       <div className="board-wrapper">
@@ -222,6 +133,7 @@ export function BoardPanel({
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' || event.key === ' ') {
                       event.preventDefault()
+                      event.stopPropagation()
                       onSquarePress(square)
                     }
                   }}
