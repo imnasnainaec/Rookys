@@ -110,6 +110,7 @@ Gate G3 status: Pending
 - 2026-04-29: Added keyboard coordinate selection with order toggle (file-rank and rank-file) driven by the active file-label set.
 - 2026-04-29: Added keyboard action navigation (arrow keys) and submit (Enter) through board keyboard controls.
 - 2026-04-29: Expanded `src/App.test.tsx` for extracted component coverage and keyboard/on-board interaction paths; re-verified `npm run typecheck`, `npm run lint`, `npm run test:run`, and `npm run build` all pass with 100% coverage.
+- 2026-04-29: Added board-panel keyboard coordinate typing to select active-player pieces using both file-rank and rank-file input (including alternate file-label sets), with regression coverage in `src/App.test.tsx`; committed as `5b98e69`.
 
 ## Phase 4 - P2P multiplayer completion before variants (depends on Phase 3)
 
