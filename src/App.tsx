@@ -54,6 +54,7 @@ function App({ initialGameState }: AppProps) {
   const [fileLabelSetId, setFileLabelSetId] = useState<FileLabelSetId>('alpha')
   const [showReachableSquares, setShowReachableSquares] = useState(true)
   const [activeKeyboardActionIndex, setActiveKeyboardActionIndex] = useState(0)
+  const [coordinateBuffer, setCoordinateBuffer] = useState('')
 
   const evaluation = evaluateTurn(gameState)
   const activePlayerLabel = getPlayerPalette(playerPaletteId).labels[gameState.turn.activePlayer]
@@ -179,15 +180,71 @@ function App({ initialGameState }: AppProps) {
     setGameState(initialGameState ?? createClassicGameState())
     setActionLog([])
     resetSelection()
+    setCoordinateBuffer('')
+  }
+
+  function tryParseCoordinateAndSelect(buffer: string): boolean {
+    if (buffer.length < 2) {
+      return false
+    }
+
+    const fileChar = buffer.charAt(0)
+    const rankChar = buffer.charAt(1)
+    const altFileChar = buffer.charAt(1)
+    const altRankChar = buffer.charAt(0)
+
+    // Try file-rank order
+    const fileIndex = fileLabels.findIndex((label) => label.toLowerCase() === fileChar.toLowerCase())
+    const rankIndex = Number.parseInt(rankChar, 10) - 1
+
+    if (fileIndex >= 0 && rankIndex >= 0 && rankIndex < gameState.variant.board.height) {
+      const square: Square = { file: fileIndex, rank: rankIndex }
+      const occupant = getPieceAtSquare(gameState, square)
+      if (occupant && occupant.owner === gameState.turn.activePlayer) {
+        handlePieceSelection(occupant)
+        setCoordinateBuffer('')
+        return true
+      }
+    }
+
+    // Try rank-file order
+    const altRankIndex = Number.parseInt(altRankChar, 10) - 1
+    const altFileIndex = fileLabels.findIndex((label) => label.toLowerCase() === altFileChar.toLowerCase())
+
+    if (altFileIndex >= 0 && altRankIndex >= 0 && altRankIndex < gameState.variant.board.height) {
+      const square: Square = { file: altFileIndex, rank: altRankIndex }
+      const occupant = getPieceAtSquare(gameState, square)
+      if (occupant && occupant.owner === gameState.turn.activePlayer) {
+        handlePieceSelection(occupant)
+        setCoordinateBuffer('')
+        return true
+      }
+    }
+
+    return false
   }
 
   function handleKeyboardActionKeyDown(event: React.KeyboardEvent<HTMLElement>) {
-    if (keyboardActions.length === 0 && event.key !== 'Escape') {
+    // Check if input is a coordinate character (file label or rank digit)
+    const fileLabelsLower = fileLabels.map((label) => label.toLowerCase())
+    const isFileChar = fileLabelsLower.includes(event.key.toLowerCase())
+    const isRankChar = /^[1-9]$/.test(event.key)
+
+    if (isFileChar || isRankChar) {
+      event.preventDefault()
+      const newBuffer = coordinateBuffer + event.key.toLowerCase()
+      setCoordinateBuffer(newBuffer)
+      tryParseCoordinateAndSelect(newBuffer)
+      return
+    }
+
+    if (keyboardActions.length === 0 && selectedPieceId === null && event.key !== 'Escape') {
       return
     }
 
     if (event.key === 'Escape') {
       event.preventDefault()
+      setCoordinateBuffer('')
       resetSelection()
       return
     }
@@ -209,6 +266,7 @@ function App({ initialGameState }: AppProps) {
     if (event.key === 'Enter') {
       event.preventDefault()
       commitAction(keyboardActions[normalizedKeyboardActionIndex].action)
+      setCoordinateBuffer('')
     }
   }
 

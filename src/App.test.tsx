@@ -463,4 +463,118 @@ describe('App', () => {
     expect(screen.getByText('white-rooky-a moved to c1, capturing black-rooky-target')).toBeTruthy()
     expect(screen.getAllByLabelText('Square c1, white rooky')[0]).toBeTruthy()
   })
+  it('supports selecting by typed coordinates and committing with enter', () => {
+    render(
+      <App
+        initialGameState={createState(
+          [
+            king('white-king', 'white', 4, 0),
+            rooky('white-rooky-a', 'white', 0, 0, { north: 1 }),
+            king('black-king', 'black', 4, 4),
+          ],
+          { activePlayer: 'white' },
+        )}
+      />,
+    )
+
+    const boardPanel = screen.getByRole('region', { name: 'Game board panel' })
+
+    // Select white rooky at a1 via coordinate typing.
+    fireEvent.keyDown(boardPanel, { key: 'a' })
+    fireEvent.keyDown(boardPanel, { key: '1' })
+
+    // Commit first available action with enter.
+    fireEvent.keyDown(boardPanel, { key: 'Enter' })
+
+    expect(screen.getByText('Black to act')).toBeTruthy()
+    expect(screen.queryByText('No actions yet.')).toBeNull()
+  })
+
+  it('ignores coordinate typing for empty squares or enemy pieces', () => {
+    render(
+      <App
+        initialGameState={createState(
+          [
+            king('white-king', 'white', 4, 0),
+            rooky('white-rooky-a', 'white', 0, 0),
+            king('black-king', 'black', 4, 4),
+          ],
+          { activePlayer: 'white' },
+        )}
+      />,
+    )
+
+    const boardPanel = screen.getByRole('region', { name: 'Game board panel' })
+
+    // Try selecting empty square
+    fireEvent.keyDown(boardPanel, { key: 'c' })
+    fireEvent.keyDown(boardPanel, { key: '3' })
+    expect(screen.getByText('No actions yet.')).toBeTruthy()
+
+    // Try selecting enemy piece
+    fireEvent.keyDown(boardPanel, { key: 'e' })
+    fireEvent.keyDown(boardPanel, { key: '5' })
+    expect(screen.getByText('No actions yet.')).toBeTruthy()
+  })
+
+  it('ignores enemy selection in rank-file coordinate order', () => {
+    render(<App />)
+
+    const boardPanel = screen.getByRole('region', { name: 'Game board panel' })
+
+    // 5e maps to black rooky on e5 for the initial position when using rank-file input.
+    fireEvent.keyDown(boardPanel, { key: '5' })
+    fireEvent.keyDown(boardPanel, { key: 'e' })
+
+    expect(screen.getByText('White to act')).toBeTruthy()
+    expect(screen.getByText('No actions yet.')).toBeTruthy()
+  })
+
+  it('clears coordinate buffer with escape during coordinate entry', () => {
+    render(
+      <App
+        initialGameState={createState(
+          [
+            king('white-king', 'white', 4, 0),
+            rooky('white-rooky-a', 'white', 0, 0, { north: 1 }),
+            king('black-king', 'black', 4, 4),
+          ],
+          { activePlayer: 'white' },
+        )}
+      />,
+    )
+
+    const boardPanel = screen.getByRole('region', { name: 'Game board panel' })
+
+    // Type 'a' and then escape
+    fireEvent.keyDown(boardPanel, { key: 'a' })
+    fireEvent.keyDown(boardPanel, { key: 'Escape' })
+
+    // If buffer was cleared, no piece should be selected
+    expect(screen.getByText('No actions yet.')).toBeTruthy()
+  })
+  it('handles keyboard coordinates mixed with arrow keys and entry', () => {
+    render(
+      <App
+        initialGameState={createState(
+          [
+            king('white-king', 'white', 4, 0),
+            rooky('white-rooky-a', 'white', 0, 0, { north: 2 }),
+            king('black-king', 'black', 4, 4),
+          ],
+          { activePlayer: 'white' },
+        )}
+      />,
+    )
+
+    const boardPanel = screen.getByRole('region', { name: 'Game board panel' })
+
+    // Select via rank-file order, then cycle and commit.
+    fireEvent.keyDown(boardPanel, { key: '1' })
+    fireEvent.keyDown(boardPanel, { key: 'a' })
+    fireEvent.keyDown(boardPanel, { key: 'ArrowRight' })
+    fireEvent.keyDown(boardPanel, { key: 'Enter' })
+
+    expect(screen.getByText('Black to act')).toBeTruthy()
+  })
 })
