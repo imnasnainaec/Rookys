@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 import './App.css'
 import {
@@ -55,6 +55,7 @@ function App({ initialGameState }: AppProps) {
   const [showReachableSquares, setShowReachableSquares] = useState(true)
   const [activeKeyboardActionIndex, setActiveKeyboardActionIndex] = useState(0)
   const [coordinateBuffer, setCoordinateBuffer] = useState('')
+  const boardPanelRef = useRef<HTMLElement>(null)
 
   const evaluation = evaluateTurn(gameState)
   const activePlayerLabel = getPlayerPalette(playerPaletteId).labels[gameState.turn.activePlayer]
@@ -294,6 +295,7 @@ function App({ initialGameState }: AppProps) {
 
       <section className="dashboard-grid">
         <BoardPanel
+          sectionRef={boardPanelRef}
           boardWidth={gameState.variant.board.width}
           boardHeight={gameState.variant.board.height}
           boardSquares={boardSquares}
@@ -321,9 +323,9 @@ function App({ initialGameState }: AppProps) {
             playerPaletteId={playerPaletteId}
             fileLabelSetId={fileLabelSetId}
             showReachableSquares={showReachableSquares}
-            onPlayerPaletteChange={setPlayerPaletteId}
-            onFileLabelSetChange={setFileLabelSetId}
-            onReachableSquaresChange={setShowReachableSquares}
+            onPlayerPaletteChange={(id) => { setPlayerPaletteId(id); boardPanelRef.current?.focus() }}
+            onFileLabelSetChange={(id) => { setFileLabelSetId(id); boardPanelRef.current?.focus() }}
+            onReachableSquaresChange={(v) => { setShowReachableSquares(v); boardPanelRef.current?.focus() }}
           />
 
           <GameLogPanel entries={actionLog} />

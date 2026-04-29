@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 
 import type {
   Direction,
@@ -29,6 +29,7 @@ type BoardPanelProps = {
   readonly statusKind: string
   readonly activeKeyboardAction: TurnAction | null
   readonly hasSelection: boolean
+  readonly sectionRef: React.RefObject<HTMLElement | null>
   readonly onSquarePress: (square: Square) => void
   readonly onUpgradePress: (action: UpgradeAction) => void
   readonly onKeyboardActionKeyDown: (event: React.KeyboardEvent<HTMLElement>) => void
@@ -60,17 +61,16 @@ export function BoardPanel({
   statusKind,
   activeKeyboardAction,
   hasSelection,
+  sectionRef,
   onSquarePress,
   onUpgradePress,
   onKeyboardActionKeyDown,
   describeSquareForAssistiveTech,
   renderPieceMeta,
 }: BoardPanelProps) {
-  const sectionRef = useRef<HTMLElement>(null)
-
   useEffect(() => {
     sectionRef.current?.focus()
-  }, [])
+  }, [sectionRef])
 
   return (
     <section ref={sectionRef} tabIndex={-1} className="card board-panel" aria-label="Game board panel" onKeyDown={onKeyboardActionKeyDown}>
