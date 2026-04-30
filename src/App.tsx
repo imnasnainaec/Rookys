@@ -335,11 +335,6 @@ function App({ initialGameState }: AppProps) {
           describeSquareForAssistiveTech={(square, piece) =>
             describeSquareForAssistiveTech(square, piece, fileLabels)
           }
-          renderPieceMeta={(piece) =>
-            `${getPlayerPalette(playerPaletteId).labels[piece.owner]}${
-              piece.kind === 'rooky' ? ` ${formatRookyRanges(piece)}` : ' king'
-            }`
-          }
         />
 
         <section className="sidebar-stack">
@@ -463,10 +458,6 @@ function describeSquareForAssistiveTech(
   }
 
   return `Square ${squareLabel}, ${piece.owner} ${piece.kind}`
-}
-
-function formatRookyRanges(piece: Extract<PieceState, { kind: 'rooky' }>): string {
-  return `N${piece.ranges.north} S${piece.ranges.south} E${piece.ranges.east} W${piece.ranges.west}`
 }
 
 function serializeSquare(square: Square): string {

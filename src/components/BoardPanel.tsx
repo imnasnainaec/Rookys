@@ -34,7 +34,6 @@ type BoardPanelProps = {
   readonly onUpgradePress: (action: UpgradeAction) => void
   readonly onKeyboardActionKeyDown: (event: React.KeyboardEvent<HTMLElement>) => void
   readonly describeSquareForAssistiveTech: (square: Square, piece: PieceState | undefined) => string
-  readonly renderPieceMeta: (piece: PieceState) => string
 }
 
 const directionLabels: Record<Direction, string> = {
@@ -66,11 +65,40 @@ export function BoardPanel({
   onUpgradePress,
   onKeyboardActionKeyDown,
   describeSquareForAssistiveTech,
-  renderPieceMeta,
 }: BoardPanelProps) {
   useEffect(() => {
     sectionRef.current?.focus()
   }, [sectionRef])
+
+  function renderPieceShape(piece: PieceState) {
+    if (piece.kind === 'king') {
+      return (
+        <svg
+          className="piece-svg king-svg"
+          viewBox="0 0 100 100"
+          aria-hidden="true"
+        >
+          <polygon points="50,0 61.5,22.3 85.4,14.6 77.7,38.5 100,50 77.7,61.5 85.4,85.4 61.5,77.7 50,100 38.5,77.7 14.6,85.4 22.3,61.5 0,50 22.3,38.5 14.6,14.6 38.5,22.3" />
+          <text x="50" y="50" textAnchor="middle" dominantBaseline="central" fontSize={30} className="piece-letter">K</text>
+        </svg>
+      )
+    }
+    const { north, east, south, west } = piece.ranges
+    return (
+      <svg
+        className="piece-svg rooky-svg"
+        viewBox="0 0 100 100"
+        aria-hidden="true"
+      >
+        <polygon points="50,4 96,50 50,96 4,50" />
+        <text x="50" y="50" textAnchor="middle" dominantBaseline="central" fontSize={28} className="piece-letter">R</text>
+        <text x="50" y="17" textAnchor="middle" dominantBaseline="central" fontSize={17} className="range-numeral">{north}</text>
+        <text x="83" y="50" textAnchor="middle" dominantBaseline="central" fontSize={17} className="range-numeral">{east}</text>
+        <text x="50" y="83" textAnchor="middle" dominantBaseline="central" fontSize={17} className="range-numeral">{south}</text>
+        <text x="17" y="50" textAnchor="middle" dominantBaseline="central" fontSize={17} className="range-numeral">{west}</text>
+      </svg>
+    )
+  }
 
   return (
     <section ref={sectionRef} tabIndex={-1} className="card board-panel" aria-label="Game board panel" onKeyDown={onKeyboardActionKeyDown}>
@@ -158,10 +186,7 @@ export function BoardPanel({
                     {square.rank + 1}
                   </span>
                   {piece ? (
-                    <span className="piece-stack">
-                      <span className="piece-symbol">{piece.kind === 'king' ? 'K' : 'R'}</span>
-                      <span className="piece-meta">{renderPieceMeta(piece)}</span>
-                    </span>
+                    renderPieceShape(piece)
                   ) : isMoveTarget ? (
                     <span className="target-marker">Move</span>
                   ) : null}
