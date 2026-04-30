@@ -1,6 +1,7 @@
 import Peer, { type DataConnection } from "peerjs";
 
 import type { GameState, TurnAction } from "../core";
+import { recordEvent } from "../telemetry";
 
 export type MultiplayerRole = "host" | "joiner";
 
@@ -101,6 +102,7 @@ export function createPeerSession(
     conn.on("close", () => {
       callbacks.onStatusChange("reconnecting");
       reconnectTimer = setTimeout(() => {
+        recordEvent("reconnect_timeout");
         callbacks.onStatusChange("peer-disconnected");
       }, RECONNECT_TIMEOUT_MS);
       const retryConn = peer.connect(dataConn.peer);
@@ -108,6 +110,7 @@ export function createPeerSession(
     });
 
     conn.on("error", () => {
+      recordEvent("connection_failure");
       callbacks.onStatusChange("peer-disconnected");
     });
   }
@@ -131,6 +134,7 @@ export function createPeerSession(
   }
 
   peer.on("error", () => {
+    recordEvent("connection_failure");
     callbacks.onStatusChange("peer-disconnected");
   });
 
