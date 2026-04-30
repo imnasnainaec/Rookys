@@ -51,7 +51,7 @@ Gate G2 status: Approved
 
 ## Phase 3 - Local gameplay UI (depends on Phase 2)
 
-Gate G3 status: Pending
+Gate G3 status: Approved
 
 - [x] Build turn UX flow: select piece -> choose move/upgrade -> select target/direction.
 - [x] Add legal-move highlighting, check/checkmate/stalemate state messaging, undo-disabled constraints matching final rules.
@@ -62,7 +62,7 @@ Gate G3 status: Pending
 - [x] Enable keyboard selection of pieces (by rank-then-file or file-then-rank), which depends on user-selected file labels.
 - [x] Replace the turn control panel with on-board mouse clicks (selected piece has clickable regions for upgrades and clickable squares for valid moves) and keyboard control (arrows to navigate between upgrade and move options, Enter to submit).
 - [x] Update tests for the extracted component structure and expanded keyboard/on-board interaction model.
-- [ ] Review gate G3: complete local match can be played end-to-end with no logic/UI desync.
+- [x] Review gate G3: complete local match can be played end-to-end with no logic/UI desync.
 
 ## Phase 4 - P2P multiplayer completion before variants (depends on Phase 3)
 
