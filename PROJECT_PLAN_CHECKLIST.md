@@ -66,7 +66,7 @@ Gate G3 status: Approved
 
 ## Phase 4 - P2P multiplayer completion before variants (depends on Phase 3)
 
-Gate G4 status: Pending
+Gate G4 status: Approved
 
 - [x] Implement host/join handshake using share code URL flow.
 - [x] Standardize join URL query flow using `?join=<ID>` for host share links and joiner auto-connect.
@@ -75,7 +75,7 @@ Gate G4 status: Pending
 - [x] Add host-authoritative fallback for dispute resolution if action streams diverge.
 - [x] Consider idea: use default/free public PeerJS broker configuration in baseline deployment.
 - [x] Create multiplayer test checklist: fresh game sync, capture sync, checkmate sync, upgrade+history-clear sync, repeated-state draw sync.
-- [ ] Review gate G4: functioning P2P game accepted as release candidate baseline before any variant implementation starts.
+- [x] Review gate G4: functioning P2P game accepted as release candidate baseline before any variant implementation starts.
 
 ## Phase 5 - Deployment hardening (depends on Phase 4)
 
