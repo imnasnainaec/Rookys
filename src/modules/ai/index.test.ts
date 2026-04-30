@@ -21,9 +21,9 @@ describe("loadModel", () => {
 
   it("records model_load_failure telemetry and rethrows when loader fails with Error", async () => {
     const err = new Error("network timeout");
-    await expect(
-      loadModel(() => Promise.reject(err)),
-    ).rejects.toThrow("network timeout");
+    await expect(loadModel(() => Promise.reject(err))).rejects.toThrow(
+      "network timeout",
+    );
 
     const events = getTelemetryEvents();
     expect(events).toHaveLength(1);
@@ -32,9 +32,9 @@ describe("loadModel", () => {
   });
 
   it("records model_load_failure telemetry and rethrows when loader fails with non-Error", async () => {
-    await expect(
-      loadModel(() => Promise.reject("bad path")),
-    ).rejects.toBe("bad path");
+    await expect(loadModel(() => Promise.reject("bad path"))).rejects.toBe(
+      "bad path",
+    );
 
     const events = getTelemetryEvents();
     expect(events).toHaveLength(1);

@@ -1,10 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  clearTelemetryEvents,
-  getTelemetryEvents,
-  recordEvent,
-} from "./index";
+import { clearTelemetryEvents, getTelemetryEvents, recordEvent } from "./index";
 
 beforeEach(() => {
   clearTelemetryEvents();

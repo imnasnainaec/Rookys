@@ -17,7 +17,9 @@ export function recordEvent(
   detail?: Record<string, unknown>,
 ): void {
   const event: TelemetryEvent =
-    detail !== undefined ? { type, timestamp: Date.now(), detail } : { type, timestamp: Date.now() };
+    detail !== undefined
+      ? { type, timestamp: Date.now(), detail }
+      : { type, timestamp: Date.now() };
   events.push(event);
   if (events.length > MAX_EVENTS) {
     events.shift();

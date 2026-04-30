@@ -14,9 +14,7 @@ export const aiBoundary = {
  * Wraps any async model loader and records a telemetry event on failure.
  * Phase 6 will replace the generic loader with the TensorFlow.js loader.
  */
-export async function loadModel<T>(
-  loader: () => Promise<T>,
-): Promise<T> {
+export async function loadModel<T>(loader: () => Promise<T>): Promise<T> {
   try {
     return await loader();
   } catch (err) {
