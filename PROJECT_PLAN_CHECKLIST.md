@@ -27,18 +27,6 @@ Gate G0 status: Approved
 - [x] Record Phase 0 commit hash(es) and update statuses.
 - [x] Review gate G0 approved.
 
-## Phase 0 Execution Log
-
-- 2026-04-27: Added governance and legal artifacts (AGENTS.md, LICENSE, THIRD_PARTY_LICENSES.md, PROJECT_PLAN_CHECKLIST.md).
-- 2026-04-27: Initialized git repository on main and created bootstrap commit 0a2793e.
-- 2026-04-27: Connected remote origin to https://github.com/imnasnainaec/Rookys.git and pushed main.
-- 2026-04-27: User recorded G0 review outcome as Approved.
-
-## Next Action
-
-1. Wait for explicit instruction before starting Phase 2.
-2. On approval to proceed, begin Phase 2 core engine state schema work.
-
 ## Phase 1 - Project scaffold and quality rails (depends on Phase 0)
 
 Gate G1 status: Approved
@@ -48,16 +36,6 @@ Gate G1 status: Approved
 - [x] Define CI baseline: typecheck, lint, unit tests, build, and Pages artifact generation.
 - [x] Configure GitHub Pages deployment path and environment config for public hosting.
 - [x] Review gate G1: CI green, app boots in browser, deployment dry-run succeeds.
-
-## Phase 1 Execution Log
-
-- 2026-04-27: Vite React+TS scaffold created and app boots via `npm run dev`.
-- 2026-04-27: Added module boundary scaffolding under `src/modules` and Redux store bootstrap.
-- 2026-04-27: Added CI and GitHub Pages workflows plus `BASE_PATH` support.
-- 2026-04-27: Installed dependencies and validated `typecheck`, `lint`, `test:run`, and `build` successfully.
-- 2026-04-27: Added baseline unit test `src/modules/core/index.test.ts` to make test rail executable in CI.
-- 2026-04-27: Updated lint ignore rules for generated `coverage` output and kept lint clean without deleting artifacts.
-- 2026-04-27: User recorded G1 review outcome as Approved.
 
 ## Phase 2 - Core game engine (classic mode) with variant-ready data model (depends on Phase 1)
 
@@ -70,17 +48,6 @@ Gate G2 status: Approved
 - [x] Add deterministic state+move hashing strategy and collision-resistant format.
 - [x] Write comprehensive engine tests from rules text (positive and negative cases).
 - [x] Review gate G2: engine passes all rule tests and independent review confirms rules parity.
-
-## Phase 2 Execution Log
-
-- 2026-04-28: Implemented classic core engine state/action model and rule validations in `src/modules/core/index.ts`.
-- 2026-04-28: Added rule-focused engine tests and over-upgrade guard coverage in `src/modules/core/index.test.ts`.
-- 2026-04-28: Removed unused starter assets from `src/assets` as repository cleanup.
-- 2026-04-28: Expanded `src/modules/core/index.test.ts` with additional positive/negative legality, repetition, terminal-state, hashing, and variant-parameter coverage (15 total tests).
-- 2026-04-28: Verified Phase 2 quality rails green via `npm run typecheck`, `npm run lint`, `npm run test:run`, and `npm run build`; pending user gate decision for G2.
-- 2026-04-28: Added `src/App.test.tsx`, `src/main.test.tsx`, `src/modules/boundaries.test.ts`, and `src/store/index.test.ts` to reach 100% statement/branch/function/line coverage across all source files (26 tests total).
-- 2026-04-28: Applied same-square guard fix to `getDirectionBetween` in `src/modules/core/index.ts` to correctly return `null` for same-square inputs; all quality rails re-verified green.
-- 2026-04-28: User recorded G2 review outcome as Approved.
 
 ## Phase 3 - Local gameplay UI (depends on Phase 2)
 
@@ -96,21 +63,6 @@ Gate G3 status: Pending
 - [x] Replace the turn control panel with on-board mouse clicks (selected piece has clickable regions for upgrades and clickable squares for valid moves) and keyboard control (arrows to navigate between upgrade and move options, Enter to submit).
 - [x] Update tests for the extracted component structure and expanded keyboard/on-board interaction model.
 - [ ] Review gate G3: complete local match can be played end-to-end with no logic/UI desync.
-
-## Phase 3 Execution Log
-
-- 2026-04-28: Replaced the scaffold landing page with a playable local classic match UI in `src/App.tsx`.
-- 2026-04-28: Added board interaction flow for selecting pieces, choosing move or upgrade actions, applying legal targets, and restarting the match.
-- 2026-04-28: Added legal-square highlighting, check/checkmate/stalemate status messaging, undo-disabled UX, and move/upgrade game log rendering.
-- 2026-04-28: Added responsive board and control styling plus UI options for palette selection, file-label sets, and reachable-square overlays in `src/App.css`.
-- 2026-04-28: Expanded `src/App.test.tsx` to cover move, upgrade, capture, restart, terminal-state messaging, option toggles, and UI guard paths.
-- 2026-04-28: Verified `npm run typecheck`, `npm run lint`, `npm run test:run`, and `npm run build` successfully with 100% statement/branch/function/line coverage.
-- 2026-04-29: Extracted board UI into `src/components/BoardPanel.tsx` and refactored `src/App.tsx` to use modular board rendering and interaction handlers.
-- 2026-04-29: Replaced sidebar turn controls with on-board move targets and directional upgrade chips on the selected piece.
-- 2026-04-29: Added keyboard coordinate selection with order toggle (file-rank and rank-file) driven by the active file-label set.
-- 2026-04-29: Added keyboard action navigation (arrow keys) and submit (Enter) through board keyboard controls.
-- 2026-04-29: Expanded `src/App.test.tsx` for extracted component coverage and keyboard/on-board interaction paths; re-verified `npm run typecheck`, `npm run lint`, `npm run test:run`, and `npm run build` all pass with 100% coverage.
-- 2026-04-29: Added board-panel keyboard coordinate typing to select active-player pieces using both file-rank and rank-file input (including alternate file-label sets), with regression coverage in `src/App.test.tsx`; committed as `5b98e69`.
 
 ## Phase 4 - P2P multiplayer completion before variants (depends on Phase 3)
 
