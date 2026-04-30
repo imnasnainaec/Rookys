@@ -1,8 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import App from './App'
+import { MultiplayerPanel } from './components/MultiplayerPanel'
 import {
   createGameState,
   type DirectionalRanges,
@@ -724,5 +725,521 @@ describe('App', () => {
     fireEvent.keyDown(boardPanel, { key: 'Enter' })
 
     expect(screen.getByText('Black to act')).toBeTruthy()
+  })
+})
+
+// ── PeerJS mock shared for multiplayer tests ─────────────────────────────────
+
+interface MockConn {
+  peer: string
+  on: ReturnType<typeof vi.fn>
+  send: ReturnType<typeof vi.fn>
+  close: ReturnType<typeof vi.fn>
+}
+
+interface MockPeer {
+  on: ReturnType<typeof vi.fn>
+  connect: ReturnType<typeof vi.fn>
+  destroy: ReturnType<typeof vi.fn>
+}
+
+let mockPeer: MockPeer
+let mockIncomingConn: MockConn
+
+const { AppMockPeer } = vi.hoisted(() => ({ AppMockPeer: vi.fn() }))
+
+vi.mock('peerjs', () => ({ default: AppMockPeer }))
+
+function setupPeerMock() {
+  mockIncomingConn = {
+    peer: 'remote-peer',
+    on: vi.fn(),
+    send: vi.fn(),
+    close: vi.fn(),
+  }
+  mockPeer = {
+    on: vi.fn(),
+    connect: vi.fn().mockReturnValue(mockIncomingConn),
+    destroy: vi.fn(),
+  }
+  AppMockPeer.mockImplementation(function () { return mockPeer })
+}
+
+function triggerPeerEvent(event: string, ...args: unknown[]) {
+  const calls = mockPeer.on.mock.calls as [string, (...a: unknown[]) => void][]
+  calls.filter(([e]) => e === event).forEach(([, h]) => h(...args))
+}
+
+function triggerConnEvent(conn: MockConn, event: string, ...args: unknown[]) {
+  const calls = conn.on.mock.calls as [string, (...a: unknown[]) => void][]
+  calls.filter(([e]) => e === event).forEach(([, h]) => h(...args))
+}
+
+describe('App – multiplayer', () => {
+  it('shows Host Game button when not active', () => {
+    setupPeerMock()
+    render(<App />)
+
+    expect(screen.getByRole('button', { name: 'Host Game' })).toBeTruthy()
+  })
+
+  it('host game flow: button click → waiting message → share link when peer id assigned', async () => {
+    setupPeerMock()
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: 'Host Game' }))
+
+    expect(screen.getByText('Setting up connection…')).toBeTruthy()
+
+    act(() => triggerPeerEvent('open', 'my-peer-id'))
+
+    expect(screen.getByText('Waiting for opponent to join…')).toBeTruthy()
+    expect(screen.getByRole('textbox', { name: 'Share link' })).toBeTruthy()
+  })
+
+  it('host game: shows connected message when opponent connects', async () => {
+    setupPeerMock()
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: 'Host Game' }))
+    act(() => triggerPeerEvent('open', 'my-peer-id'))
+    act(() => triggerPeerEvent('connection', mockIncomingConn))
+    act(() => triggerConnEvent(mockIncomingConn, 'open'))
+
+    expect(screen.getByText('Opponent connected.')).toBeTruthy()
+  })
+
+  it('leave game destroys session and returns to idle state', async () => {
+    setupPeerMock()
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: 'Host Game' }))
+    act(() => triggerPeerEvent('open', 'my-peer-id'))
+
+    await user.click(screen.getByRole('button', { name: 'Leave Game' }))
+
+    expect(mockPeer.destroy).toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Host Game' })).toBeTruthy()
+  })
+
+  it('restart button is disabled while multiplayer is active', async () => {
+    setupPeerMock()
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: 'Host Game' }))
+
+    const restart = screen.getByRole('button', { name: 'Restart match' })
+    expect(restart.matches(':disabled')).toBe(true)
+  })
+
+  it('host cannot select or move black pieces', async () => {
+    setupPeerMock()
+    const user = userEvent.setup()
+    render(
+      <App
+        initialGameState={createState(
+          [
+            king('white-king', 'white', 4, 0),
+            rooky('white-rooky-a', 'white', 0, 0, { north: 1 }),
+            king('black-king', 'black', 4, 4),
+          ],
+          { activePlayer: 'black' },
+        )}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Host Game' }))
+    act(() => triggerPeerEvent('open', 'my-peer-id'))
+    act(() => triggerPeerEvent('connection', mockIncomingConn))
+    act(() => triggerConnEvent(mockIncomingConn, 'open'))
+
+    // It's black's turn but host is white — cannot select black king
+    await user.click(screen.getAllByLabelText('Square e5, black king')[0])
+    expect(screen.getByText('Black to act')).toBeTruthy()
+    expect(screen.getByText('No actions yet.')).toBeTruthy()
+  })
+
+  it('host applies valid remote upgrade action from joiner', async () => {
+    setupPeerMock()
+    const user = userEvent.setup()
+    const initialState = createState(
+      [
+        king('white-king', 'white', 4, 0),
+        rooky('white-rooky-a', 'white', 0, 0, { north: 1 }),
+        king('black-king', 'black', 4, 4),
+        rooky('black-rooky-a', 'black', 0, 4),
+      ],
+      { activePlayer: 'white' },
+    )
+    render(<App initialGameState={initialState} />)
+
+    await user.click(screen.getByRole('button', { name: 'Host Game' }))
+    act(() => triggerPeerEvent('open', 'my-peer-id'))
+    act(() => triggerPeerEvent('connection', mockIncomingConn))
+    act(() => triggerConnEvent(mockIncomingConn, 'open'))
+
+    // Host takes white's turn first
+    await user.click(screen.getAllByLabelText('Square a1, white rooky')[0])
+    await user.click(screen.getAllByLabelText('Square a2, empty')[0])
+    expect(screen.getByText('Black to act')).toBeTruthy()
+
+    // Joiner sends black rooky upgrade (type !== 'move' → capturedPiece = undefined)
+    act(() => triggerConnEvent(mockIncomingConn, 'data', {
+      type: 'action',
+      actionId: 'upgrade-1',
+      turn: 2,
+      payload: { type: 'upgrade', pieceId: 'black-rooky-a', direction: 'south' },
+    }))
+
+    expect(screen.getByText('White to act')).toBeTruthy()
+  })
+
+  it('host applies valid remote action from joiner (black)', async () => {
+    setupPeerMock()
+    const user = userEvent.setup()
+    const initialState = createState(
+      [
+        king('white-king', 'white', 4, 0),
+        rooky('white-rooky-a', 'white', 0, 0, { north: 1 }),
+        king('black-king', 'black', 4, 4),
+      ],
+      { activePlayer: 'white' },
+    )
+    render(<App initialGameState={initialState} />)
+
+    await user.click(screen.getByRole('button', { name: 'Host Game' }))
+    act(() => triggerPeerEvent('open', 'my-peer-id'))
+    act(() => triggerPeerEvent('connection', mockIncomingConn))
+    act(() => triggerConnEvent(mockIncomingConn, 'open'))
+
+    // Host takes white's turn first
+    await user.click(screen.getAllByLabelText('Square a1, white rooky')[0])
+    await user.click(screen.getAllByLabelText('Square a2, empty')[0])
+    expect(screen.getByText('Black to act')).toBeTruthy()
+
+    // Joiner sends a black king move (ply = 2, after white moved)
+    act(() => triggerConnEvent(mockIncomingConn, 'data', {
+      type: 'action',
+      actionId: 'envelope-1',
+      turn: 2,
+      payload: { type: 'move', pieceId: 'black-king', to: { file: 4, rank: 3 } },
+    }))
+
+    expect(screen.getByText('White to act')).toBeTruthy()
+  })
+
+  it('host sends sync when remote action has wrong turn', async () => {
+    setupPeerMock()
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: 'Host Game' }))
+    act(() => triggerPeerEvent('open', 'my-peer-id'))
+    act(() => triggerPeerEvent('connection', mockIncomingConn))
+    act(() => triggerConnEvent(mockIncomingConn, 'open'))
+
+    // Send action with wrong turn number
+    act(() => triggerConnEvent(mockIncomingConn, 'data', {
+      type: 'action',
+      actionId: 'bad-turn',
+      turn: 999,
+      payload: { type: 'move', pieceId: 'white-king', to: { file: 1, rank: 1 } },
+    }))
+
+    expect(mockIncomingConn.send).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'sync' }),
+    )
+  })
+
+  it('sync received replaces game state', async () => {
+    setupPeerMock()
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: 'Host Game' }))
+    act(() => triggerPeerEvent('open', 'my-peer-id'))
+    act(() => triggerPeerEvent('connection', mockIncomingConn))
+    act(() => triggerConnEvent(mockIncomingConn, 'open'))
+
+    const syncedState = createState(
+      [
+        king('white-king', 'white', 0, 0),
+        king('black-king', 'black', 4, 4),
+      ],
+      { activePlayer: 'black' },
+    )
+
+    act(() => triggerConnEvent(mockIncomingConn, 'data', { type: 'sync', state: syncedState }))
+
+    expect(screen.getByText('Black to act')).toBeTruthy()
+  })
+
+  it('deduplicates remote actions with the same actionId', async () => {
+    setupPeerMock()
+    const user = userEvent.setup()
+    const initialState = createState(
+      [
+        king('white-king', 'white', 4, 0),
+        rooky('white-rooky-a', 'white', 0, 0, { north: 1 }),
+        king('black-king', 'black', 4, 4),
+      ],
+      { activePlayer: 'white' },
+    )
+    render(<App initialGameState={initialState} />)
+
+    await user.click(screen.getByRole('button', { name: 'Host Game' }))
+    act(() => triggerPeerEvent('open', 'my-peer-id'))
+    act(() => triggerPeerEvent('connection', mockIncomingConn))
+    act(() => triggerConnEvent(mockIncomingConn, 'open'))
+
+    // White moves first
+    await user.click(screen.getAllByLabelText('Square a1, white rooky')[0])
+    await user.click(screen.getAllByLabelText('Square a2, empty')[0])
+
+    const envelope = {
+      type: 'action' as const,
+      actionId: 'dup-id',
+      turn: 2,
+      payload: { type: 'move' as const, pieceId: 'black-king', to: { file: 4, rank: 3 } },
+    }
+
+    act(() => triggerConnEvent(mockIncomingConn, 'data', envelope))
+    act(() => triggerConnEvent(mockIncomingConn, 'data', envelope)) // duplicate
+
+    // Only 2 actions logged (white move + black move, not 3)
+    const logItems = screen.getAllByRole('listitem')
+    expect(logItems).toHaveLength(2)
+  })
+
+  it('auto-joins from initialSearchParams', () => {
+    setupPeerMock()
+    render(<App initialSearchParams="?join=host-peer-id" />)
+
+    expect(AppMockPeer).toHaveBeenCalled()
+    expect(screen.getByText('Setting up connection…')).toBeTruthy()
+  })
+
+  it('peer-disconnected status shown when connection is lost permanently', async () => {
+    setupPeerMock()
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: 'Host Game' }))
+    act(() => triggerPeerEvent('open', 'my-peer-id'))
+    act(() => triggerPeerEvent('connection', mockIncomingConn))
+    act(() => triggerConnEvent(mockIncomingConn, 'open'))
+    act(() => triggerConnEvent(mockIncomingConn, 'error'))
+
+    expect(screen.getByText('Opponent disconnected.')).toBeTruthy()
+  })
+
+  it('joiner applies remote action from host (white)', async () => {
+    setupPeerMock()
+    render(<App initialSearchParams="?join=host-id" />)
+
+    act(() => triggerPeerEvent('open', 'my-joiner-id'))
+    act(() => triggerConnEvent(mockIncomingConn, 'open'))
+
+    // Host sends white king move (ply 1)
+    act(() => triggerConnEvent(mockIncomingConn, 'data', {
+      type: 'action',
+      actionId: 'remote-action-1',
+      turn: 1,
+      payload: { type: 'move', pieceId: 'white-king', to: { file: 1, rank: 1 } },
+    }))
+
+    expect(screen.getByText('Black to act')).toBeTruthy()
+  })
+
+  it('joiner receives sync from host and updates state', async () => {
+    setupPeerMock()
+    render(<App initialSearchParams="?join=host-id" />)
+
+    act(() => triggerPeerEvent('open', 'my-joiner-id'))
+    act(() => triggerConnEvent(mockIncomingConn, 'open'))
+
+    const syncedState = createState(
+      [king('white-king', 'white', 0, 0), king('black-king', 'black', 4, 4)],
+      { activePlayer: 'black' },
+    )
+
+    act(() => triggerConnEvent(mockIncomingConn, 'data', { type: 'sync', state: syncedState }))
+
+    expect(screen.getByText('Black to act')).toBeTruthy()
+  })
+
+  it('joiner ignores remote action with wrong turn (no sync sent from joiner)', async () => {
+    setupPeerMock()
+    render(<App initialSearchParams="?join=host-id" />)
+
+    act(() => triggerPeerEvent('open', 'my-joiner-id'))
+    act(() => triggerConnEvent(mockIncomingConn, 'open'))
+
+    // Wrong turn — joiner does not send sync (only host does)
+    act(() => triggerConnEvent(mockIncomingConn, 'data', {
+      type: 'action',
+      actionId: 'wrong-turn',
+      turn: 999,
+      payload: { type: 'move', pieceId: 'white-king', to: { file: 1, rank: 1 } },
+    }))
+
+    // State unchanged: still white's turn
+    expect(screen.getByText('White to act')).toBeTruthy()
+    // Joiner does NOT send sync (unlike host)
+    expect(mockIncomingConn.send).not.toHaveBeenCalled()
+  })
+
+  it('peer id callbacks are no-ops when multiplayer becomes inactive before firing', async () => {
+    setupPeerMock()
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: 'Host Game' }))
+
+    // Leave before peer id fires
+    await user.click(screen.getByRole('button', { name: 'Leave Game' }))
+
+    // Callbacks fire after leave — should silently no-op
+    act(() => triggerPeerEvent('open', 'late-peer-id'))
+
+    // Should be back to idle state (not active)
+    expect(screen.getByRole('button', { name: 'Host Game' })).toBeTruthy()
+  })
+
+  it('joiner auto-join callbacks are no-ops when leave fires before peer open', async () => {
+    setupPeerMock()
+    const user = userEvent.setup()
+    // Auto-join: multiplayer becomes active (joiner/idle) synchronously
+    render(<App initialSearchParams="?join=some-host-id" />)
+
+    // Status=idle so "Leave Game" button is shown; leave before peer assigns id
+    await user.click(screen.getByRole('button', { name: 'Leave Game' }))
+
+    // Now fire auto-join callbacks → prev.active is false → no-ops
+    act(() => triggerPeerEvent('open', 'late-joiner-id'))
+
+    expect(screen.getByRole('button', { name: 'Host Game' })).toBeTruthy()
+  })
+
+  it('commitAction is a no-op when piece no longer exists (captured via sync before commit)', async () => {
+    // Covers the !movingPiece guard branch in commitAction (line 296 defense-in-depth)
+    setupPeerMock()
+    const user = userEvent.setup()
+    const initialState = createState(
+      [
+        king('white-king', 'white', 4, 0),
+        rooky('white-rooky-a', 'white', 0, 0, { north: 1 }),
+        king('black-king', 'black', 4, 4),
+      ],
+      { activePlayer: 'white' },
+    )
+    render(<App initialGameState={initialState} />)
+
+    await user.click(screen.getByRole('button', { name: 'Host Game' }))
+    act(() => triggerPeerEvent('open', 'my-peer-id'))
+    act(() => triggerPeerEvent('connection', mockIncomingConn))
+    act(() => triggerConnEvent(mockIncomingConn, 'open'))
+
+    // Select white rooky
+    await user.click(screen.getAllByLabelText('Square a1, white rooky')[0])
+
+    // Receive sync that removes white rooky from the board
+    const syncedState = createState(
+      [king('white-king', 'white', 4, 0), king('black-king', 'black', 4, 4)],
+      { activePlayer: 'white' },
+    )
+    act(() => triggerConnEvent(mockIncomingConn, 'data', { type: 'sync', state: syncedState }))
+
+    // Keyboard Enter — selection was cleared by sync resetSelection, so nothing happens
+    const boardPanel = screen.getByRole('region', { name: 'Game board panel' })
+    fireEvent.keyDown(boardPanel, { key: 'Enter' })
+
+    expect(screen.getByText('No actions yet.')).toBeTruthy()
+  })
+
+  it('replaces window history when auto-joining from real URL (no initialSearchParams)', () => {
+    setupPeerMock()
+    const replaceState = vi.spyOn(window.history, 'replaceState')
+    // Simulate a URL with ?join= by setting window.location.search via jsdom
+    // jsdom doesn't allow direct assignment but we can verify replaceState is called
+    // When initialSearchParams is undefined and there's a join param, replaceState fires.
+    // We use a wrapper: render with undefined, and fake window.location.search by using
+    // Object.defineProperty just for this test.
+    const originalSearch = window.location.search
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: { ...window.location, search: '?join=some-host', pathname: '/' },
+    })
+    render(<App />)
+    expect(replaceState).toHaveBeenCalledWith(null, '', '/')
+    // restore
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: { ...window.location, search: originalSearch },
+    })
+    replaceState.mockRestore()
+  })
+
+  it('commitAction ignores moves for opponent pieces when local role is host', async () => {
+    setupPeerMock()
+    const user = userEvent.setup()
+    const initialState = createState(
+      [
+        king('white-king', 'white', 4, 0),
+        rooky('white-rooky-a', 'white', 0, 0, { north: 1 }),
+        king('black-king', 'black', 4, 4),
+      ],
+      { activePlayer: 'black' },
+    )
+    render(<App initialGameState={initialState} />)
+
+    await user.click(screen.getByRole('button', { name: 'Host Game' }))
+    act(() => triggerPeerEvent('open', 'my-peer-id'))
+    act(() => triggerPeerEvent('connection', mockIncomingConn))
+    act(() => triggerConnEvent(mockIncomingConn, 'open'))
+
+    // Black king can theoretically be clicked as a square, but host is white
+    // Try clicking black king (should be blocked by handlePieceSelection guard)
+    await user.click(screen.getAllByLabelText('Square e5, black king')[0])
+    expect(screen.getByText('No actions yet.')).toBeTruthy()
+  })
+
+  it('focuses share-url-input and selects text on focus', async () => {
+    setupPeerMock()
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: 'Host Game' }))
+    act(() => triggerPeerEvent('open', 'my-peer-id'))
+
+    const input = screen.getByRole('textbox', { name: 'Share link' }) as HTMLInputElement
+    const selectSpy = vi.spyOn(input, 'select')
+    await user.click(input)
+
+    expect(selectSpy).toHaveBeenCalled()
+    selectSpy.mockRestore()
+  })
+})
+
+describe('MultiplayerPanel', () => {
+  it('renders empty string when active=true and status=null', () => {
+    render(
+      <MultiplayerPanel
+        active={true}
+        role="host"
+        status={null}
+        localPeerId={null}
+        shareUrl={null}
+        onHostGame={() => {}}
+        onLeaveMultiplayer={() => {}}
+      />,
+    )
+    // The connection-message paragraph should render but be empty
+    const msg = document.querySelector('.connection-message')
+    expect(msg?.textContent).toBe('')
   })
 })
