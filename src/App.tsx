@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { nanoid } from 'nanoid'
 
 import './App.css'
@@ -33,29 +33,11 @@ import {
   type TurnAction,
   type UpgradeAction,
 } from './modules/core'
-import {
-  createPeerSession,
-  type ActionEnvelope,
-  type ConnectionStatus,
-  type MultiplayerRole,
-  type PeerSessionHandle,
-  type SyncEnvelope,
-} from './modules/networking'
-
-type ActionLogEntry = {
-  readonly ply: number
-  readonly text: string
-  readonly outcome: string
-}
-
-type MultiplayerState =
-  | { readonly active: false }
-  | {
-      readonly active: true
-      readonly role: MultiplayerRole
-      readonly status: ConnectionStatus
-      readonly localPeerId: string | null
-    }
+import { describeAction, describeStatus, formatSquare } from './modules/ui'
+import { useKeyboardControl } from './hooks/useKeyboardControl'
+import { useLocalPersistence, GAME_STORAGE_KEY, LOG_STORAGE_KEY } from './hooks/useLocalPersistence'
+import { useMultiplayer } from './hooks/useMultiplayer'
+import type { ActionLogEntry } from './hooks/types'
 
 interface AppProps {
   readonly initialGameState?: GameState
@@ -69,11 +51,7 @@ const playerThemeClassNames: Record<string, string> = {
   'yellow-blue': 'theme-yellow-blue',
 }
 
-const GAME_STORAGE_KEY = 'rookys-game-state'
-const LOG_STORAGE_KEY = 'rookys-action-log'
-
 function App({ initialGameState, initialSearchParams }: AppProps) {
-  const persistRef = useRef(initialGameState === undefined)
   const [gameState, setGameState] = useState<GameState>(() => {
     if (initialGameState !== undefined) return initialGameState
     try {
@@ -95,85 +73,31 @@ function App({ initialGameState, initialSearchParams }: AppProps) {
   const [fileLabelSetId, setFileLabelSetId] = useState<FileLabelSetId>('alpha')
   const [boardOrientationId, setBoardOrientationId] = useState<BoardOrientationId>('first-player')
   const [showReachableSquares, setShowReachableSquares] = useState(true)
-  const [activeKeyboardActionIndex, setActiveKeyboardActionIndex] = useState(0)
-  const [coordinateBuffer, setCoordinateBuffer] = useState('')
-  const [multiplayer, setMultiplayer] = useState<MultiplayerState>(() => {
-    const search = initialSearchParams ?? window.location.search
-    const params = new URLSearchParams(search)
-    if (params.get('join') !== null) {
-      return { active: true, role: 'joiner', status: 'idle', localPeerId: null }
-    }
-    return { active: false }
-  })
   const boardPanelRef = useRef<HTMLElement>(null)
-  const sessionHandleRef = useRef<PeerSessionHandle | null>(null)
-  const gameStateRef = useRef<GameState>(gameState)
-  const handleRemoteActionRef = useRef<((envelope: ActionEnvelope) => void) | null>(null)
-  const handleSyncReceivedRef = useRef<((envelope: SyncEnvelope) => void) | null>(null)
 
-  useEffect(() => {
-    if (!persistRef.current) return
-    localStorage.setItem(GAME_STORAGE_KEY, JSON.stringify(gameState))
-    localStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(actionLog))
-  }, [gameState, actionLog])
-
-  useEffect(() => {
-    const search = initialSearchParams ?? window.location.search
-    const params = new URLSearchParams(search)
-    const joinId = params.get('join')
-    if (joinId === null) return
-    if (initialSearchParams === undefined) {
-      window.history.replaceState(null, '', window.location.pathname)
-    }
-    const handle = createPeerSession('joiner', joinId, {
-      onPeerIdAssigned: (id) => setMultiplayer((prev) => prev.active ? { ...prev, localPeerId: id } : prev),
-      onStatusChange: (status) => setMultiplayer((prev) => prev.active ? { ...prev, status } : prev),
-      onRemoteAction: (envelope) => handleRemoteActionRef.current?.(envelope),
-      onSyncReceived: (envelope) => handleSyncReceivedRef.current?.(envelope),
-    })
-    sessionHandleRef.current = handle
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  const isHost = multiplayer.active && multiplayer.role === 'host'
-  const localPlayerColor: PlayerColor | null = multiplayer.active
-    ? (multiplayer.role === 'host' ? 'white' : 'black')
-    : null
-
+  const fileLabels = getFileLabelOption(fileLabelSetId).labels
+  const fileLabelsRef = useRef(fileLabels)
+  const playerPaletteRef = useRef(getPlayerPalette(playerPaletteId))
   useLayoutEffect(() => {
-    gameStateRef.current = gameState
-    handleRemoteActionRef.current = (envelope: ActionEnvelope) => {
-      const current = gameStateRef.current
-      if (envelope.turn !== current.turn.ply) {
-        if (isHost) {
-          sessionHandleRef.current?.send({ type: 'sync', state: current })
-        }
-        return
-      }
-      const action = envelope.payload
-      const movingPiece = current.pieces.find((p) => p.id === action.pieceId)!
-      const capturedPiece = action.type === 'move' ? getPieceAtSquare(current, action.to) : undefined
-      const nextState = applyAction(current, action)
-      const nextEvaluation = evaluateTurn(nextState)
-      setActionLog((prev) => [
-        ...prev,
-        {
-          ply: current.turn.ply,
-          text: describeAction(movingPiece, action, capturedPiece, fileLabelsRef.current),
-          outcome: describeStatus(nextEvaluation.status, playerPaletteRef.current.labels),
-        },
-      ])
-      setGameState(nextState)
-      resetSelection()
-    }
-    handleSyncReceivedRef.current = (envelope: SyncEnvelope) => {
-      setGameState(envelope.state)
-      resetSelection()
-    }
+    fileLabelsRef.current = fileLabels
+    playerPaletteRef.current = getPlayerPalette(playerPaletteId)
   })
+
+  // All function declarations below are hoisted, so they can be referenced here
+  useLocalPersistence(gameState, actionLog, initialGameState === undefined)
+
+  const { multiplayer, localPlayerColor, sessionHandleRef, handleHostGame, handleLeaveMultiplayer } =
+    useMultiplayer({
+      initialSearchParams,
+      gameState,
+      setGameState,
+      setActionLog,
+      resetSelection,
+      fileLabelsRef,
+      playerPaletteRef,
+    })
 
   const evaluation = evaluateTurn(gameState)
-  const activePlayerLabel = getPlayerPalette(playerPaletteId).labels[gameState.turn.activePlayer]
   const selectedPiece =
     selectedPieceId === null
       ? null
@@ -188,21 +112,7 @@ function App({ initialGameState, initialSearchParams }: AppProps) {
   const selectedPieceUpgradeActions = selectedPieceActions.filter(
     (action): action is UpgradeAction => action.type === 'upgrade',
   )
-  const fileLabels = getFileLabelOption(fileLabelSetId).labels
-  const fileLabelsRef = useRef(fileLabels)
-  const playerPaletteRef = useRef(getPlayerPalette(playerPaletteId))
-  useLayoutEffect(() => {
-    fileLabelsRef.current = fileLabels
-    playerPaletteRef.current = getPlayerPalette(playerPaletteId)
-  })
-  const boardBottomPlayer = getBoardBottomPlayer(boardOrientationId, gameState.turn.activePlayer)
-  const isBoardRotated = boardBottomPlayer === 'black'
-  const boardFileAxisLabels = isBoardRotated
-    ? [...fileLabels].reverse()
-    : [...fileLabels]
-  const boardRankAxisLabels = Array.from({ length: gameState.variant.board.height }, (_, index) =>
-    isBoardRotated ? index + 1 : gameState.variant.board.height - index,
-  )
+
   const keyboardActions = [
     ...selectedPieceMoveActions.map((action) => ({
       action,
@@ -213,10 +123,27 @@ function App({ initialGameState, initialSearchParams }: AppProps) {
       label: `Upgrade ${action.direction}`,
     })),
   ]
-  const normalizedKeyboardActionIndex =
-    keyboardActions.length === 0 ? 0 : activeKeyboardActionIndex % keyboardActions.length
-  const activeKeyboardAction =
-    keyboardActions.length === 0 ? null : keyboardActions[normalizedKeyboardActionIndex].action
+
+  const { activeKeyboardAction, resetActiveIndex, clearCoordinateBuffer, handleKeyboardActionKeyDown } =
+    useKeyboardControl({
+      gameState,
+      fileLabels,
+      keyboardActions,
+      selectedPieceId,
+      onSelectPiece: handlePieceSelection,
+      onCommitAction: commitAction,
+      onResetSelection: resetSelection,
+    })
+
+  const activePlayerLabel = getPlayerPalette(playerPaletteId).labels[gameState.turn.activePlayer]
+  const boardBottomPlayer = getBoardBottomPlayer(boardOrientationId, gameState.turn.activePlayer)
+  const isBoardRotated = boardBottomPlayer === 'black'
+  const boardFileAxisLabels = isBoardRotated
+    ? [...fileLabels].reverse()
+    : [...fileLabels]
+  const boardRankAxisLabels = Array.from({ length: gameState.variant.board.height }, (_, index) =>
+    isBoardRotated ? index + 1 : gameState.variant.board.height - index,
+  )
   const reachableSquareSets = showReachableSquares
     ? {
         white: getReachableSquareSet(gameState, 'white'),
@@ -260,7 +187,7 @@ function App({ initialGameState, initialSearchParams }: AppProps) {
 
   function resetSelection() {
     setSelectedPieceId(null)
-    setActiveKeyboardActionIndex(0)
+    resetActiveIndex()
   }
 
   function handlePieceSelection(piece: PieceState) {
@@ -330,114 +257,7 @@ function App({ initialGameState, initialSearchParams }: AppProps) {
     setGameState(initialGameState ?? createClassicGameState())
     setActionLog([])
     resetSelection()
-    setCoordinateBuffer('')
-  }
-
-  function handleHostGame() {
-    setMultiplayer({ active: true, role: 'host', status: 'idle', localPeerId: null })
-    const handle = createPeerSession('host', null, {
-      onPeerIdAssigned: (id) => setMultiplayer((prev) => prev.active ? { ...prev, localPeerId: id } : prev),
-      onStatusChange: (status) => setMultiplayer((prev) => prev.active ? { ...prev, status } : prev),
-      onRemoteAction: (envelope) => handleRemoteActionRef.current?.(envelope),
-      onSyncReceived: (envelope) => handleSyncReceivedRef.current?.(envelope),
-    })
-    sessionHandleRef.current = handle
-  }
-
-  function handleLeaveMultiplayer() {
-    sessionHandleRef.current?.destroy()
-    sessionHandleRef.current = null
-    setMultiplayer({ active: false })
-    setGameState(createClassicGameState())
-    setActionLog([])
-    resetSelection()
-  }
-
-  function tryParseCoordinateAndSelect(buffer: string): boolean {
-    if (buffer.length < 2) {
-      return false
-    }
-
-    const fileChar = buffer.charAt(0)
-    const rankChar = buffer.charAt(1)
-    const altFileChar = buffer.charAt(1)
-    const altRankChar = buffer.charAt(0)
-
-    // Try file-rank order
-    const fileIndex = fileLabels.findIndex((label) => label.toLowerCase() === fileChar.toLowerCase())
-    const rankIndex = Number.parseInt(rankChar, 10) - 1
-
-    if (fileIndex >= 0 && rankIndex >= 0 && rankIndex < gameState.variant.board.height) {
-      const square: Square = { file: fileIndex, rank: rankIndex }
-      const occupant = getPieceAtSquare(gameState, square)
-      if (occupant && occupant.owner === gameState.turn.activePlayer) {
-        handlePieceSelection(occupant)
-        setCoordinateBuffer('')
-        return true
-      }
-    }
-
-    // Try rank-file order
-    const altRankIndex = Number.parseInt(altRankChar, 10) - 1
-    const altFileIndex = fileLabels.findIndex((label) => label.toLowerCase() === altFileChar.toLowerCase())
-
-    if (altFileIndex >= 0 && altRankIndex >= 0 && altRankIndex < gameState.variant.board.height) {
-      const square: Square = { file: altFileIndex, rank: altRankIndex }
-      const occupant = getPieceAtSquare(gameState, square)
-      if (occupant && occupant.owner === gameState.turn.activePlayer) {
-        handlePieceSelection(occupant)
-        setCoordinateBuffer('')
-        return true
-      }
-    }
-
-    return false
-  }
-
-  function handleKeyboardActionKeyDown(event: React.KeyboardEvent<HTMLElement>) {
-    // Check if input is a coordinate character (file label or rank digit)
-    const fileLabelsLower = fileLabels.map((label) => label.toLowerCase())
-    const isFileChar = fileLabelsLower.includes(event.key.toLowerCase())
-    const isRankChar = /^[1-9]$/.test(event.key)
-
-    if (isFileChar || isRankChar) {
-      event.preventDefault()
-      const newBuffer = coordinateBuffer + event.key.toLowerCase()
-      setCoordinateBuffer(newBuffer)
-      tryParseCoordinateAndSelect(newBuffer)
-      return
-    }
-
-    if (keyboardActions.length === 0 && selectedPieceId === null && event.key !== 'Escape') {
-      return
-    }
-
-    if (event.key === 'Escape') {
-      event.preventDefault()
-      setCoordinateBuffer('')
-      resetSelection()
-      return
-    }
-
-    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
-      event.preventDefault()
-      setActiveKeyboardActionIndex((previous) => (previous + 1) % keyboardActions.length)
-      return
-    }
-
-    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
-      event.preventDefault()
-      setActiveKeyboardActionIndex(
-        (previous) => (previous - 1 + keyboardActions.length) % keyboardActions.length,
-      )
-      return
-    }
-
-    if (event.key === 'Enter') {
-      event.preventDefault()
-      commitAction(keyboardActions[normalizedKeyboardActionIndex].action)
-      setCoordinateBuffer('')
-    }
+    clearCoordinateBuffer()
   }
 
   return (
@@ -588,49 +408,6 @@ function getReachableClassName(
   }
 
   return ''
-}
-
-function describeAction(
-  piece: PieceState,
-  action: TurnAction,
-  capturedPiece: PieceState | undefined,
-  fileLabels: readonly string[],
-): string {
-  if (action.type === 'move') {
-    const captureSuffix = capturedPiece ? `, capturing ${capturedPiece.id}` : ''
-
-    return `${piece.id} moved to ${formatSquare(action.to, fileLabels)}${captureSuffix}`
-  }
-
-  return `${piece.id} upgraded ${action.direction}`
-}
-
-function describeStatus(
-  status: GameState['status'],
-  labels: Record<PlayerColor, string>,
-): string {
-  if (status.kind === 'check') {
-    return `${labels[status.checkedPlayer]} in check`
-  }
-
-  if (status.kind === 'checkmate') {
-    return `${labels[status.winner]} wins by checkmate`
-  }
-
-  if (status.kind === 'stalemate') {
-    return status.reason === 'repetition'
-      ? 'Stalemate by repetition'
-      : 'Stalemate by no legal turn'
-  }
-
-  return 'Match ongoing'
-}
-
-function formatSquare(
-  square: Square,
-  fileLabels: readonly string[],
-): string {
-  return `${fileLabels[square.file]}${square.rank + 1}`
 }
 
 function describeSquareForAssistiveTech(
