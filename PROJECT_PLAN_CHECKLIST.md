@@ -81,9 +81,9 @@ Gate G4 status: Approved
 
 Gate G5 status: Pending
 
-- [ ] Publish to GitHub Pages public repo with production build and verified base path.
-- [ ] Add release workflow: tagged build, artifact retention, and rollback instructions.
-- [ ] Add telemetry-lite diagnostics (non-personal) for connection failures and model load failures.
+- [x] Publish to GitHub Pages public repo with production build and verified base path.
+- [x] Add release workflow: tagged build, artifact retention, and rollback instructions.
+- [x] Add telemetry-lite diagnostics (non-personal) for connection failures and model load failures.
 - [ ] Review gate G5: external users can create/join games successfully from hosted URL.
 
 ## Phase 6 - AI architecture and training pipeline with ranking system (depends on Phase 5)
