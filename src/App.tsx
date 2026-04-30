@@ -71,7 +71,11 @@ function App({ initialGameState, initialSearchParams }: AppProps) {
   })
   const [playerPaletteId, setPlayerPaletteId] = useState<PlayerPaletteId>('black-white')
   const [fileLabelSetId, setFileLabelSetId] = useState<FileLabelSetId>('alpha')
-  const [boardOrientationId, setBoardOrientationId] = useState<BoardOrientationId>('first-player')
+  const [boardOrientationId, setBoardOrientationId] = useState<BoardOrientationId>(() => {
+    const search = initialSearchParams ?? window.location.search
+    const params = new URLSearchParams(search)
+    return params.get('join') !== null ? 'second-player' : 'first-player'
+  })
   const [showReachableSquares, setShowReachableSquares] = useState(true)
   const boardPanelRef = useRef<HTMLElement>(null)
 

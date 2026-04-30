@@ -24,7 +24,11 @@ export interface SyncEnvelope {
   readonly state: GameState;
 }
 
-export type NetworkMessage = ActionEnvelope | SyncEnvelope;
+export interface LeaveEnvelope {
+  readonly type: "leave";
+}
+
+export type NetworkMessage = ActionEnvelope | SyncEnvelope | LeaveEnvelope;
 
 export interface PeerSessionCallbacks {
   readonly onPeerIdAssigned: (id: string) => void;
@@ -50,13 +54,15 @@ export const networkingBoundary: NetworkingBoundary = {
 };
 
 export const RECONNECT_TIMEOUT_MS = 10_000;
+export const PEER_ID_STORAGE_KEY = "rookys-peer-id";
 
 export function createPeerSession(
   role: MultiplayerRole,
   joinId: string | null,
   callbacks: PeerSessionCallbacks,
 ): PeerSessionHandle {
-  const peer = new Peer();
+  const savedPeerId = sessionStorage.getItem(PEER_ID_STORAGE_KEY);
+  const peer = savedPeerId !== null ? new Peer(savedPeerId) : new Peer();
   let conn: DataConnection | null = null;
   const seenActionIds = new Set<string>();
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -84,6 +90,9 @@ export function createPeerSession(
         }
         seenActionIds.add(msg.actionId);
         callbacks.onRemoteAction(msg);
+      } else if (msg.type === "leave") {
+        clearReconnectTimer();
+        callbacks.onStatusChange("peer-disconnected");
       } else {
         callbacks.onSyncReceived(msg as SyncEnvelope);
       }
@@ -104,6 +113,7 @@ export function createPeerSession(
   }
 
   peer.on("open", (id) => {
+    sessionStorage.setItem(PEER_ID_STORAGE_KEY, id);
     callbacks.onPeerIdAssigned(id);
     if (role === "host") {
       callbacks.onStatusChange("hosting");
@@ -130,8 +140,10 @@ export function createPeerSession(
     },
     destroy() {
       clearReconnectTimer();
+      conn?.send({ type: "leave" });
       conn?.close();
       peer.destroy();
+      sessionStorage.removeItem(PEER_ID_STORAGE_KEY);
     },
   };
 }

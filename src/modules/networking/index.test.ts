@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ActionEnvelope, PeerSessionCallbacks } from "./index";
-import { createPeerSession, RECONNECT_TIMEOUT_MS } from "./index";
+import {
+  createPeerSession,
+  PEER_ID_STORAGE_KEY,
+  RECONNECT_TIMEOUT_MS,
+} from "./index";
 import { createClassicGameState } from "../core";
 
 // ── PeerJS mock ──────────────────────────────────────────────────────────────
@@ -39,6 +43,7 @@ function makeConn(peerId = "remote-id"): MockConn {
 }
 
 beforeEach(() => {
+  sessionStorage.clear();
   mockConn = makeConn();
   mockRetryConn = makeConn("remote-id");
   mockPeer = {
@@ -245,6 +250,21 @@ describe("createPeerSession – host role", () => {
     ).not.toThrow();
   });
 
+  it("destroy sends leave message before closing when conn is active", () => {
+    const cb = makeCallbacks();
+    const handle = createPeerSession("host", null, cb);
+
+    triggerPeer("open", "local-id");
+    triggerPeer("connection", mockConn);
+    triggerConn(mockConn, "open");
+
+    handle.destroy();
+
+    expect(mockConn.send).toHaveBeenCalledWith({ type: "leave" });
+    expect(mockConn.close).toHaveBeenCalled();
+    expect(mockPeer.destroy).toHaveBeenCalled();
+  });
+
   it("destroy closes conn and peer, clears timer when conn is active", () => {
     vi.useFakeTimers();
     const cb = makeCallbacks();
@@ -295,5 +315,53 @@ describe("createPeerSession – joiner role", () => {
       mockPeer.on.mock.calls as [string, unknown][]
     ).map(([e]) => e);
     expect(registeredEvents).not.toContain("connection");
+  });
+
+  it("transitions to peer-disconnected immediately when leave message is received", () => {
+    vi.useFakeTimers();
+    const cb = makeCallbacks();
+    createPeerSession("joiner", "host-peer-id", cb);
+
+    triggerPeer("open", "my-id");
+    triggerConn(mockConn, "open");
+    triggerConn(mockConn, "data", { type: "leave" });
+
+    expect(cb.statusLog).toContain("peer-disconnected");
+    // No reconnect timer fires after explicit leave
+    vi.advanceTimersByTime(RECONNECT_TIMEOUT_MS + 100);
+    const lastStatus = cb.statusLog[cb.statusLog.length - 1];
+    expect(lastStatus).toBe("peer-disconnected");
+  });
+});
+
+describe("createPeerSession – sessionStorage peer ID persistence", () => {
+  it("creates Peer with no args when sessionStorage has no saved ID", () => {
+    createPeerSession("host", null, makeCallbacks());
+
+    expect(MockPeer).toHaveBeenCalledWith();
+  });
+
+  it("creates Peer with saved ID when sessionStorage has one", () => {
+    sessionStorage.setItem(PEER_ID_STORAGE_KEY, "saved-peer-id");
+    createPeerSession("host", null, makeCallbacks());
+
+    expect(MockPeer).toHaveBeenCalledWith("saved-peer-id");
+  });
+
+  it("stores peer ID in sessionStorage on peer open", () => {
+    createPeerSession("host", null, makeCallbacks());
+
+    triggerPeer("open", "assigned-id");
+
+    expect(sessionStorage.getItem(PEER_ID_STORAGE_KEY)).toBe("assigned-id");
+  });
+
+  it("removes peer ID from sessionStorage on destroy", () => {
+    sessionStorage.setItem(PEER_ID_STORAGE_KEY, "some-id");
+    const handle = createPeerSession("host", null, makeCallbacks());
+
+    handle.destroy();
+
+    expect(sessionStorage.getItem(PEER_ID_STORAGE_KEY)).toBeNull();
   });
 });
