@@ -370,6 +370,122 @@ describe('App', () => {
     expect(screen.getAllByLabelText('Square e3, empty')[0].className.includes('reachable-')).toBe(false)
   })
 
+  it('reverses file axis when row 5 is at the bottom', async () => {
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: 'Current player at bottom' }))
+    await user.click(screen.getAllByLabelText('Square c1, white king')[0])
+    await user.click(screen.getAllByLabelText('Square b2, empty')[0])
+
+    const fileAxis = document.querySelector('.board-files')
+    const rankAxis = document.querySelector('.board-ranks')
+
+    expect(fileAxis).toBeTruthy()
+    expect(rankAxis).toBeTruthy()
+
+    const fileLabels = Array.from(fileAxis!.querySelectorAll('.axis-label')).map(
+      (node) => node.textContent,
+    )
+    const rankLabels = Array.from(rankAxis!.querySelectorAll('.axis-label')).map(
+      (node) => node.textContent,
+    )
+
+    expect(fileLabels).toEqual(['e', 'd', 'c', 'b', 'a'])
+    expect(rankLabels).toEqual(['1', '2', '3', '4', '5'])
+  })
+
+  it('keeps row 5 at the bottom when second player is selected at bottom', async () => {
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: 'Second player at bottom' }))
+
+    const fileAxis = document.querySelector('.board-files')
+    const rankAxis = document.querySelector('.board-ranks')
+
+    expect(fileAxis).toBeTruthy()
+    expect(rankAxis).toBeTruthy()
+
+    const fileLabels = Array.from(fileAxis!.querySelectorAll('.axis-label')).map(
+      (node) => node.textContent,
+    )
+    const rankLabels = Array.from(rankAxis!.querySelectorAll('.axis-label')).map(
+      (node) => node.textContent,
+    )
+
+    expect(fileLabels).toEqual(['e', 'd', 'c', 'b', 'a'])
+    expect(rankLabels).toEqual(['1', '2', '3', '4', '5'])
+  })
+
+  it('rotates rooky corner numerals when board orientation rotates', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <App
+        initialGameState={createState(
+          [
+            king('white-king', 'white', 4, 0),
+            rooky('white-rooky-a', 'white', 0, 0, {
+              north: 1,
+              east: 2,
+              south: 3,
+              west: 4,
+            }),
+            king('black-king', 'black', 4, 4),
+          ],
+          { activePlayer: 'white' },
+        )}
+      />,
+    )
+
+    const rookySquare = screen.getAllByLabelText('Square a1, white rooky')[0]
+    const getDisplayedRanges = () =>
+      Array.from(rookySquare.querySelectorAll('.range-numeral')).map(
+        (node) => node.textContent,
+      )
+
+    expect(getDisplayedRanges()).toEqual(['1', '2', '3', '4'])
+
+    await user.click(screen.getByRole('button', { name: 'Second player at bottom' }))
+
+    expect(getDisplayedRanges()).toEqual(['3', '4', '1', '2'])
+  })
+
+  it('rotates on-piece upgrade chip positions when board orientation rotates', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <App
+        initialGameState={createState(
+          [
+            king('white-king', 'white', 4, 0),
+            rooky('white-rooky-a', 'white', 0, 0),
+            king('black-king', 'black', 4, 4),
+          ],
+          { activePlayer: 'white' },
+        )}
+      />,
+    )
+
+    await user.click(screen.getAllByLabelText('Square a1, white rooky')[0])
+
+    expect(screen.getByRole('button', { name: 'Upgrade North' }).className).toContain('upgrade-north')
+    expect(screen.getByRole('button', { name: 'Upgrade East' }).className).toContain('upgrade-east')
+    expect(screen.getByRole('button', { name: 'Upgrade South' }).className).toContain('upgrade-south')
+    expect(screen.getByRole('button', { name: 'Upgrade West' }).className).toContain('upgrade-west')
+
+    await user.click(screen.getByRole('button', { name: 'Second player at bottom' }))
+    await user.click(screen.getAllByLabelText('Square a1, white rooky')[0])
+
+    expect(screen.getByRole('button', { name: 'Upgrade North' }).className).toContain('upgrade-south')
+    expect(screen.getByRole('button', { name: 'Upgrade East' }).className).toContain('upgrade-west')
+    expect(screen.getByRole('button', { name: 'Upgrade South' }).className).toContain('upgrade-north')
+    expect(screen.getByRole('button', { name: 'Upgrade West' }).className).toContain('upgrade-east')
+  })
+
   it('supports explicit move selection from the target list and restart reset', async () => {
     const user = userEvent.setup()
 

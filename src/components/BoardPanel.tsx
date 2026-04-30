@@ -21,9 +21,11 @@ export type BoardSquareViewModel = {
 
 type BoardPanelProps = {
   readonly boardWidth: number
-  readonly boardHeight: number
   readonly boardSquares: readonly BoardSquareViewModel[]
   readonly fileLabels: readonly string[]
+  readonly boardFileAxisLabels: readonly string[]
+  readonly boardRankAxisLabels: readonly number[]
+  readonly isBoardRotated: boolean
   readonly activePlayerLabel: string
   readonly statusText: string
   readonly statusKind: string
@@ -50,11 +52,33 @@ const directionAbbreviations: Record<Direction, string> = {
   west: 'W',
 }
 
+function getDisplayDirection(direction: Direction, isBoardRotated: boolean): Direction {
+  if (!isBoardRotated) {
+    return direction
+  }
+
+  if (direction === 'north') {
+    return 'south'
+  }
+
+  if (direction === 'south') {
+    return 'north'
+  }
+
+  if (direction === 'east') {
+    return 'west'
+  }
+
+  return 'east'
+}
+
 export function BoardPanel({
   boardWidth,
-  boardHeight,
   boardSquares,
   fileLabels,
+  boardFileAxisLabels,
+  boardRankAxisLabels,
+  isBoardRotated,
   activePlayerLabel,
   statusText,
   statusKind,
@@ -84,6 +108,19 @@ export function BoardPanel({
       )
     }
     const { north, east, south, west } = piece.ranges
+    const displayRanges = isBoardRotated
+      ? {
+          north: south,
+          east: west,
+          south: north,
+          west: east,
+        }
+      : {
+          north,
+          east,
+          south,
+          west,
+        }
     return (
       <svg
         className="piece-svg rooky-svg"
@@ -92,10 +129,10 @@ export function BoardPanel({
       >
         <polygon points="50,4 96,50 50,96 4,50" />
         <text x="50" y="50" textAnchor="middle" dominantBaseline="central" fontSize={28} className="piece-letter">R</text>
-        <text x="50" y="17" textAnchor="middle" dominantBaseline="central" fontSize={17} className="range-numeral">{north}</text>
-        <text x="83" y="50" textAnchor="middle" dominantBaseline="central" fontSize={17} className="range-numeral">{east}</text>
-        <text x="50" y="83" textAnchor="middle" dominantBaseline="central" fontSize={17} className="range-numeral">{south}</text>
-        <text x="17" y="50" textAnchor="middle" dominantBaseline="central" fontSize={17} className="range-numeral">{west}</text>
+        <text x="50" y="17" textAnchor="middle" dominantBaseline="central" fontSize={17} className="range-numeral">{displayRanges.north}</text>
+        <text x="83" y="50" textAnchor="middle" dominantBaseline="central" fontSize={17} className="range-numeral">{displayRanges.east}</text>
+        <text x="50" y="83" textAnchor="middle" dominantBaseline="central" fontSize={17} className="range-numeral">{displayRanges.south}</text>
+        <text x="17" y="50" textAnchor="middle" dominantBaseline="central" fontSize={17} className="range-numeral">{displayRanges.west}</text>
       </svg>
     )
   }
@@ -114,15 +151,11 @@ export function BoardPanel({
 
       <div className="board-wrapper">
         <div className="board-ranks" aria-hidden="true">
-          {Array.from({ length: boardHeight }, (_, index) => {
-            const rankValue = boardHeight - index
-
-            return (
-              <span key={rankValue} className="axis-label">
-                {rankValue}
-              </span>
-            )
-          })}
+          {boardRankAxisLabels.map((label) => (
+            <span key={label} className="axis-label">
+              {label}
+            </span>
+          ))}
         </div>
 
         <div
@@ -197,13 +230,14 @@ export function BoardPanel({
                         const isKeyboardUpgradeTarget =
                           activeKeyboardAction?.type === 'upgrade' &&
                           activeKeyboardAction.direction === action.direction
+                        const displayDirection = getDisplayDirection(action.direction, isBoardRotated)
 
                         return (
                           <button
                             key={action.direction}
                             className={[
                               'upgrade-chip',
-                              `upgrade-${action.direction}`,
+                              `upgrade-${displayDirection}`,
                               isKeyboardUpgradeTarget ? 'keyboard-target' : '',
                             ]
                               .filter(Boolean)
@@ -229,7 +263,7 @@ export function BoardPanel({
       </div>
 
       <div className="board-files" aria-hidden="true">
-        {fileLabels.map((label) => (
+        {boardFileAxisLabels.map((label) => (
           <span key={label} className="axis-label">
             {label}
           </span>

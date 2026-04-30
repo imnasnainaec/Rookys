@@ -1,4 +1,6 @@
 import {
+  boardOrientationOptions,
+  type BoardOrientationId,
   fileLabelOptions,
   playerPaletteOptions,
   type FileLabelSetId,
@@ -8,18 +10,22 @@ import {
 type UiOptionsPanelProps = {
   readonly playerPaletteId: PlayerPaletteId
   readonly fileLabelSetId: FileLabelSetId
+  readonly boardOrientationId: BoardOrientationId
   readonly showReachableSquares: boolean
   readonly onPlayerPaletteChange: (id: PlayerPaletteId) => void
   readonly onFileLabelSetChange: (id: FileLabelSetId) => void
+  readonly onBoardOrientationChange: (id: BoardOrientationId) => void
   readonly onReachableSquaresChange: (value: boolean) => void
 }
 
 export function UiOptionsPanel({
   playerPaletteId,
   fileLabelSetId,
+  boardOrientationId,
   showReachableSquares,
   onPlayerPaletteChange,
   onFileLabelSetChange,
+  onBoardOrientationChange,
   onReachableSquaresChange,
 }: UiOptionsPanelProps) {
   return (
@@ -58,6 +64,23 @@ export function UiOptionsPanel({
               type="button"
               aria-pressed={fileLabelSetId === option.id}
               onClick={() => onFileLabelSetChange(option.id)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="option-group">
+        <span className="option-label">Board orientation</span>
+        <div className="chip-row" role="radiogroup" aria-label="Board orientation options">
+          {boardOrientationOptions.map((option) => (
+            <button
+              key={option.id}
+              className="chip-button"
+              type="button"
+              aria-pressed={boardOrientationId === option.id}
+              onClick={() => onBoardOrientationChange(option.id)}
             >
               {option.label}
             </button>

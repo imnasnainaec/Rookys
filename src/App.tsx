@@ -8,8 +8,11 @@ import {
 import { GameLogPanel } from './components/GameLogPanel'
 import { UiOptionsPanel } from './components/UiOptionsPanel'
 import {
+  boardOrientationOptions,
+  type BoardOrientationId,
   fileLabelOptions,
   playerPaletteOptions,
+  type BoardOrientationOption,
   type FileLabelOption,
   type FileLabelSetId,
   type PlayerPaletteId,
@@ -70,6 +73,7 @@ function App({ initialGameState }: AppProps) {
   })
   const [playerPaletteId, setPlayerPaletteId] = useState<PlayerPaletteId>('black-white')
   const [fileLabelSetId, setFileLabelSetId] = useState<FileLabelSetId>('alpha')
+  const [boardOrientationId, setBoardOrientationId] = useState<BoardOrientationId>('first-player')
   const [showReachableSquares, setShowReachableSquares] = useState(true)
   const [activeKeyboardActionIndex, setActiveKeyboardActionIndex] = useState(0)
   const [coordinateBuffer, setCoordinateBuffer] = useState('')
@@ -98,6 +102,14 @@ function App({ initialGameState }: AppProps) {
     (action): action is UpgradeAction => action.type === 'upgrade',
   )
   const fileLabels = getFileLabelOption(fileLabelSetId).labels
+  const boardBottomPlayer = getBoardBottomPlayer(boardOrientationId, gameState.turn.activePlayer)
+  const isBoardRotated = boardBottomPlayer === 'black'
+  const boardFileAxisLabels = isBoardRotated
+    ? [...fileLabels].reverse()
+    : [...fileLabels]
+  const boardRankAxisLabels = Array.from({ length: gameState.variant.board.height }, (_, index) =>
+    isBoardRotated ? index + 1 : gameState.variant.board.height - index,
+  )
   const keyboardActions = [
     ...selectedPieceMoveActions.map((action) => ({
       action,
@@ -124,8 +136,15 @@ function App({ initialGameState }: AppProps) {
 
   const boardSquares: BoardSquareViewModel[] = []
 
-  for (let rank = gameState.variant.board.height - 1; rank >= 0; rank -= 1) {
-    for (let file = 0; file < gameState.variant.board.width; file += 1) {
+  const rankIndexes = isBoardRotated
+    ? Array.from({ length: gameState.variant.board.height }, (_, index) => index)
+    : Array.from({ length: gameState.variant.board.height }, (_, index) => gameState.variant.board.height - 1 - index)
+  const fileIndexes = isBoardRotated
+    ? Array.from({ length: gameState.variant.board.width }, (_, index) => gameState.variant.board.width - 1 - index)
+    : Array.from({ length: gameState.variant.board.width }, (_, index) => index)
+
+  for (const rank of rankIndexes) {
+    for (const file of fileIndexes) {
       const square = { file, rank }
       const squareKey = serializeSquare(square)
       const piece = getPieceAtSquare(gameState, square)
@@ -321,9 +340,11 @@ function App({ initialGameState }: AppProps) {
         <BoardPanel
           sectionRef={boardPanelRef}
           boardWidth={gameState.variant.board.width}
-          boardHeight={gameState.variant.board.height}
           boardSquares={boardSquares}
           fileLabels={fileLabels}
+          boardFileAxisLabels={boardFileAxisLabels}
+          boardRankAxisLabels={boardRankAxisLabels}
+          isBoardRotated={isBoardRotated}
           activePlayerLabel={activePlayerLabel}
           statusText={describeStatus(evaluation.status, getPlayerPalette(playerPaletteId).labels)}
           statusKind={evaluation.status.kind}
@@ -341,9 +362,11 @@ function App({ initialGameState }: AppProps) {
           <UiOptionsPanel
             playerPaletteId={playerPaletteId}
             fileLabelSetId={fileLabelSetId}
+            boardOrientationId={boardOrientationId}
             showReachableSquares={showReachableSquares}
             onPlayerPaletteChange={(id) => { setPlayerPaletteId(id); boardPanelRef.current?.focus() }}
             onFileLabelSetChange={(id) => { setFileLabelSetId(id); boardPanelRef.current?.focus() }}
+            onBoardOrientationChange={(id) => { setBoardOrientationId(id); boardPanelRef.current?.focus() }}
             onReachableSquaresChange={(v) => { setShowReachableSquares(v); boardPanelRef.current?.focus() }}
           />
 
@@ -360,6 +383,27 @@ function getPlayerPalette(id: PlayerPaletteId): PlayerPaletteOption {
 
 function getFileLabelOption(id: FileLabelSetId): FileLabelOption {
   return fileLabelOptions.find((option) => option.id === id)!
+}
+
+function getBoardOrientationOption(id: BoardOrientationId): BoardOrientationOption {
+  return boardOrientationOptions.find((option) => option.id === id)!
+}
+
+function getBoardBottomPlayer(
+  orientationId: BoardOrientationId,
+  activePlayer: PlayerColor,
+): PlayerColor {
+  const orientation = getBoardOrientationOption(orientationId)
+
+  if (orientation.id === 'first-player') {
+    return 'white'
+  }
+
+  if (orientation.id === 'second-player') {
+    return 'black'
+  }
+
+  return activePlayer
 }
 
 function getReachableSquareSet(
