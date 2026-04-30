@@ -1,6 +1,6 @@
 # PROJECT_PLAN_CHECKLIST
 
-Last updated: 2026-04-28
+Last updated: 2026-04-30
 Canonical source of truth for implementation progress and session resume.
 
 ## Legend
@@ -68,13 +68,13 @@ Gate G3 status: Approved
 
 Gate G4 status: Pending
 
-- [ ] Implement host/join handshake using share code URL flow.
-- [ ] Standardize join URL query flow using `?join=<ID>` for host share links and joiner auto-connect.
-- [ ] Synchronize actions (not full state snapshots by default) with deterministic reducer replay.
-- [ ] Add resilience paths: reconnect timeout handling, peer disconnect messaging, duplicate/out-of-order action protection.
-- [ ] Add host-authoritative fallback for dispute resolution if action streams diverge.
-- [ ] Consider idea: use default/free public PeerJS broker configuration in baseline deployment.
-- [ ] Create multiplayer test checklist: fresh game sync, capture sync, checkmate sync, upgrade+history-clear sync, repeated-state draw sync.
+- [x] Implement host/join handshake using share code URL flow.
+- [x] Standardize join URL query flow using `?join=<ID>` for host share links and joiner auto-connect.
+- [x] Synchronize actions (not full state snapshots by default) with deterministic reducer replay.
+- [x] Add resilience paths: reconnect timeout handling, peer disconnect messaging, duplicate/out-of-order action protection.
+- [x] Add host-authoritative fallback for dispute resolution if action streams diverge.
+- [x] Consider idea: use default/free public PeerJS broker configuration in baseline deployment.
+- [x] Create multiplayer test checklist: fresh game sync, capture sync, checkmate sync, upgrade+history-clear sync, repeated-state draw sync.
 - [ ] Review gate G4: functioning P2P game accepted as release candidate baseline before any variant implementation starts.
 
 ## Phase 5 - Deployment hardening (depends on Phase 4)
