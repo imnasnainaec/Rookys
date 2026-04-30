@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { nanoid } from 'nanoid'
 
 import './App.css'
 import {
@@ -6,6 +7,7 @@ import {
   type BoardSquareViewModel,
 } from './components/BoardPanel'
 import { GameLogPanel } from './components/GameLogPanel'
+import { MultiplayerPanel } from './components/MultiplayerPanel'
 import { UiOptionsPanel } from './components/UiOptionsPanel'
 import {
   boardOrientationOptions,
@@ -31,6 +33,14 @@ import {
   type TurnAction,
   type UpgradeAction,
 } from './modules/core'
+import {
+  createPeerSession,
+  type ActionEnvelope,
+  type ConnectionStatus,
+  type MultiplayerRole,
+  type PeerSessionHandle,
+  type SyncEnvelope,
+} from './modules/networking'
 
 type ActionLogEntry = {
   readonly ply: number
@@ -38,8 +48,18 @@ type ActionLogEntry = {
   readonly outcome: string
 }
 
+type MultiplayerState =
+  | { readonly active: false }
+  | {
+      readonly active: true
+      readonly role: MultiplayerRole
+      readonly status: ConnectionStatus
+      readonly localPeerId: string | null
+    }
+
 interface AppProps {
   readonly initialGameState?: GameState
+  readonly initialSearchParams?: string
 }
 
 const playerThemeClassNames: Record<string, string> = {
@@ -52,7 +72,7 @@ const playerThemeClassNames: Record<string, string> = {
 const GAME_STORAGE_KEY = 'rookys-game-state'
 const LOG_STORAGE_KEY = 'rookys-action-log'
 
-function App({ initialGameState }: AppProps) {
+function App({ initialGameState, initialSearchParams }: AppProps) {
   const persistRef = useRef(initialGameState === undefined)
   const [gameState, setGameState] = useState<GameState>(() => {
     if (initialGameState !== undefined) return initialGameState
@@ -77,13 +97,80 @@ function App({ initialGameState }: AppProps) {
   const [showReachableSquares, setShowReachableSquares] = useState(true)
   const [activeKeyboardActionIndex, setActiveKeyboardActionIndex] = useState(0)
   const [coordinateBuffer, setCoordinateBuffer] = useState('')
+  const [multiplayer, setMultiplayer] = useState<MultiplayerState>(() => {
+    const search = initialSearchParams ?? window.location.search
+    const params = new URLSearchParams(search)
+    if (params.get('join') !== null) {
+      return { active: true, role: 'joiner', status: 'idle', localPeerId: null }
+    }
+    return { active: false }
+  })
   const boardPanelRef = useRef<HTMLElement>(null)
+  const sessionHandleRef = useRef<PeerSessionHandle | null>(null)
+  const gameStateRef = useRef<GameState>(gameState)
+  const handleRemoteActionRef = useRef<((envelope: ActionEnvelope) => void) | null>(null)
+  const handleSyncReceivedRef = useRef<((envelope: SyncEnvelope) => void) | null>(null)
 
   useEffect(() => {
     if (!persistRef.current) return
     localStorage.setItem(GAME_STORAGE_KEY, JSON.stringify(gameState))
     localStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(actionLog))
   }, [gameState, actionLog])
+
+  useEffect(() => {
+    const search = initialSearchParams ?? window.location.search
+    const params = new URLSearchParams(search)
+    const joinId = params.get('join')
+    if (joinId === null) return
+    if (initialSearchParams === undefined) {
+      window.history.replaceState(null, '', window.location.pathname)
+    }
+    const handle = createPeerSession('joiner', joinId, {
+      onPeerIdAssigned: (id) => setMultiplayer((prev) => prev.active ? { ...prev, localPeerId: id } : prev),
+      onStatusChange: (status) => setMultiplayer((prev) => prev.active ? { ...prev, status } : prev),
+      onRemoteAction: (envelope) => handleRemoteActionRef.current?.(envelope),
+      onSyncReceived: (envelope) => handleSyncReceivedRef.current?.(envelope),
+    })
+    sessionHandleRef.current = handle
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const isHost = multiplayer.active && multiplayer.role === 'host'
+  const localPlayerColor: PlayerColor | null = multiplayer.active
+    ? (multiplayer.role === 'host' ? 'white' : 'black')
+    : null
+
+  useLayoutEffect(() => {
+    gameStateRef.current = gameState
+    handleRemoteActionRef.current = (envelope: ActionEnvelope) => {
+      const current = gameStateRef.current
+      if (envelope.turn !== current.turn.ply) {
+        if (isHost) {
+          sessionHandleRef.current?.send({ type: 'sync', state: current })
+        }
+        return
+      }
+      const action = envelope.payload
+      const movingPiece = current.pieces.find((p) => p.id === action.pieceId)!
+      const capturedPiece = action.type === 'move' ? getPieceAtSquare(current, action.to) : undefined
+      const nextState = applyAction(current, action)
+      const nextEvaluation = evaluateTurn(nextState)
+      setActionLog((prev) => [
+        ...prev,
+        {
+          ply: current.turn.ply,
+          text: describeAction(movingPiece, action, capturedPiece, fileLabelsRef.current),
+          outcome: describeStatus(nextEvaluation.status, playerPaletteRef.current.labels),
+        },
+      ])
+      setGameState(nextState)
+      resetSelection()
+    }
+    handleSyncReceivedRef.current = (envelope: SyncEnvelope) => {
+      setGameState(envelope.state)
+      resetSelection()
+    }
+  })
 
   const evaluation = evaluateTurn(gameState)
   const activePlayerLabel = getPlayerPalette(playerPaletteId).labels[gameState.turn.activePlayer]
@@ -102,6 +189,12 @@ function App({ initialGameState }: AppProps) {
     (action): action is UpgradeAction => action.type === 'upgrade',
   )
   const fileLabels = getFileLabelOption(fileLabelSetId).labels
+  const fileLabelsRef = useRef(fileLabels)
+  const playerPaletteRef = useRef(getPlayerPalette(playerPaletteId))
+  useLayoutEffect(() => {
+    fileLabelsRef.current = fileLabels
+    playerPaletteRef.current = getPlayerPalette(playerPaletteId)
+  })
   const boardBottomPlayer = getBoardBottomPlayer(boardOrientationId, gameState.turn.activePlayer)
   const isBoardRotated = boardBottomPlayer === 'black'
   const boardFileAxisLabels = isBoardRotated
@@ -157,7 +250,8 @@ function App({ initialGameState }: AppProps) {
         isSelected: piece?.id === selectedPieceId,
         isPieceSelectable:
           piece?.owner === gameState.turn.activePlayer &&
-          evaluation.legalActions.some((action) => action.pieceId === piece.id),
+          evaluation.legalActions.some((action) => action.pieceId === piece.id) &&
+          (localPlayerColor === null || localPlayerColor === piece?.owner),
         reachableClassName: getReachableClassName(squareKey, reachableSquareSets),
         upgradeActions: piece?.id === selectedPieceId ? selectedPieceUpgradeActions : [],
       })
@@ -170,6 +264,9 @@ function App({ initialGameState }: AppProps) {
   }
 
   function handlePieceSelection(piece: PieceState) {
+    if (localPlayerColor !== null && piece.owner !== localPlayerColor) {
+      return
+    }
     const pieceActions = evaluation.legalActions.filter((action) => action.pieceId === piece.id)
 
     if (pieceActions.length === 0) {
@@ -212,12 +309,21 @@ function App({ initialGameState }: AppProps) {
       ...previous,
       {
         ply: gameState.turn.ply,
-        text: describeAction(movingPiece, action, capturedPiece, fileLabels),
+        text: describeAction(movingPiece!, action, capturedPiece, fileLabels),
         outcome: describeStatus(nextEvaluation.status, getPlayerPalette(playerPaletteId).labels),
       },
     ])
     setGameState(nextState)
     resetSelection()
+
+    if (multiplayer.active && multiplayer.status === 'connected') {
+      sessionHandleRef.current!.send({
+        type: 'action',
+        actionId: nanoid(),
+        turn: gameState.turn.ply,
+        payload: action,
+      })
+    }
   }
 
   function handleRestart() {
@@ -225,6 +331,26 @@ function App({ initialGameState }: AppProps) {
     setActionLog([])
     resetSelection()
     setCoordinateBuffer('')
+  }
+
+  function handleHostGame() {
+    setMultiplayer({ active: true, role: 'host', status: 'idle', localPeerId: null })
+    const handle = createPeerSession('host', null, {
+      onPeerIdAssigned: (id) => setMultiplayer((prev) => prev.active ? { ...prev, localPeerId: id } : prev),
+      onStatusChange: (status) => setMultiplayer((prev) => prev.active ? { ...prev, status } : prev),
+      onRemoteAction: (envelope) => handleRemoteActionRef.current?.(envelope),
+      onSyncReceived: (envelope) => handleSyncReceivedRef.current?.(envelope),
+    })
+    sessionHandleRef.current = handle
+  }
+
+  function handleLeaveMultiplayer() {
+    sessionHandleRef.current?.destroy()
+    sessionHandleRef.current = null
+    setMultiplayer({ active: false })
+    setGameState(createClassicGameState())
+    setActionLog([])
+    resetSelection()
   }
 
   function tryParseCoordinateAndSelect(buffer: string): boolean {
@@ -318,16 +444,20 @@ function App({ initialGameState }: AppProps) {
     <main className={`app-shell ${playerThemeClassNames[playerPaletteId]}`}>
       <header className="hero card">
         <div>
-          <p className="eyebrow">Phase 3 Local Gameplay UI</p>
+          <p className="eyebrow">Classic Rookys</p>
           <h1>Classic Rookys Match</h1>
           <p>
-            Local turn flow is live: select a piece, choose move or upgrade, then
-            commit the target action.
+            Select a piece, choose a move or upgrade, then commit the action.
           </p>
         </div>
 
         <div className="hero-actions">
-          <button className="secondary-button" type="button" onClick={handleRestart}>
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={handleRestart}
+            disabled={multiplayer.active}
+          >
             Restart match
           </button>
           <button className="secondary-button" type="button" disabled>
@@ -359,6 +489,19 @@ function App({ initialGameState }: AppProps) {
         />
 
         <section className="sidebar-stack">
+          <MultiplayerPanel
+            active={multiplayer.active}
+            role={multiplayer.active ? multiplayer.role : null}
+            status={multiplayer.active ? multiplayer.status : null}
+            localPeerId={multiplayer.active ? multiplayer.localPeerId : null}
+            shareUrl={
+              multiplayer.active && multiplayer.localPeerId !== null
+                ? `${window.location.origin}${window.location.pathname}?join=${multiplayer.localPeerId}`
+                : null
+            }
+            onHostGame={handleHostGame}
+            onLeaveMultiplayer={handleLeaveMultiplayer}
+          />
           <UiOptionsPanel
             playerPaletteId={playerPaletteId}
             fileLabelSetId={fileLabelSetId}
