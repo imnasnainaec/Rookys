@@ -174,8 +174,6 @@ For repetition checks, "same state" should be treated as exact game-state equiva
 
 ## 11. Variant Framework
 
-The following are variant capabilities listed in the source rules.
-
 ## 11.1 Custom Board Dimensions
 
 - Square boards: NxN
@@ -191,12 +189,9 @@ The following are variant capabilities listed in the source rules.
 
 ## 11.3 Custom King Configuration
 
-- Custom number of Kings (K)
 - Custom King positions
 - Position modes: corners vs random vs manual
 - Side mapping modes: mirrored vs reversed vs any
-- King movement options: lateral vs diagonal vs both
-- Optional King upgradability
 
 ## 11.4 Bishy Piece
 
@@ -216,16 +211,3 @@ Modes:
 
 - Chill: inactive means unreachable by any piece in one move
 - Aggressive: inactive means unoccupied
-
-## 11.7 Reincarnation
-
-Adds a third turn option:
-
-- Restore one captured piece to your starting rank
-- Restored piece has all upgrades reset to 0
-
-## 11.8 Wrap-Around
-
-- File wrapping
-- Rank wrapping
-- If columns wrap, edge columns may not exist; starting-rank references should then be explicitly fixed and marked by rules/UI
