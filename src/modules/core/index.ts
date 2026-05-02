@@ -393,6 +393,8 @@ function deriveStatus(
   legalActions = generateLegalActions(state),
   inCheck = isKingInCheck(state, state.turn.activePlayer),
 ): GameStatus {
+  // TODO: Add stalemate check for if only kings are left.
+
   if (hasRepeatedTwoPlyCycle(state)) {
     return {
       kind: "stalemate",
